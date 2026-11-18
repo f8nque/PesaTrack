@@ -84,6 +84,19 @@ class OwnedViewSet(viewsets.ModelViewSet):
     def activate(self, request, pk=None):
         instance = self.get_object()
         if hasattr(instance, 'is_active'):
+            if isinstance(instance, Transaction) and instance.spent_category:
+                dup = Transaction.objects.filter(
+                    user=instance.user,
+                    transaction_date=instance.transaction_date,
+                    spent_category=instance.spent_category,
+                    is_active=True
+                ).exclude(pk=instance.pk).exists()
+                if dup:
+                    cat_name = getattr(instance.spent_category, 'name', str(instance.spent_category))
+                    return Response(
+                        {'error': f'Cannot activate: an active transaction for "{cat_name}" on {instance.transaction_date} already exists.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
             instance.is_active = True
             instance.save()
             return Response(self.get_serializer(instance).data)

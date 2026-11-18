@@ -103,3 +103,70 @@ class BudgetArchitectureTests(TestCase):
         self.assertEqual(res_sum.data['planned'], 15000.0)
         self.assertEqual(res_sum.data['budget'][0]['actual'], 2500.0)
         self.assertEqual(res_sum.data['budget'][0]['grouping_priority'], 1)
+
+    def test_restrict_one_entry_per_category_and_date(self):
+        group = BudgetGroupCategory.objects.create(user=self.user, name='UPKEEP', priority=1)
+        bcat = BudgetCategory.objects.create(user=self.user, grouping=group, name='Shopping', category_type='needs')
+        scat1 = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='MEAT')
+        scat2 = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='MILK')
+
+        # 1. Create first transaction for scat1 on self.today
+        res1 = self.client.post('/api/transactions/', {
+            'amount': '150.00',
+            'category': scat1.id,
+            'date': str(self.today),
+            'narrative': 'First meat purchase'
+        }, format='json')
+        self.assertEqual(res1.status_code, 201)
+        tx1_id = res1.data['id']
+
+        # 2. Duplicate attempt on same date and same category must fail
+        res_dup = self.client.post('/api/transactions/', {
+            'amount': '200.00',
+            'category': scat1.id,
+            'date': str(self.today),
+            'narrative': 'Duplicate meat purchase'
+        }, format='json')
+        self.assertEqual(res_dup.status_code, 400)
+        self.assertIn('already exists', str(res_dup.data))
+
+        # 3. Different category on same date is allowed
+        res_diff_cat = self.client.post('/api/transactions/', {
+            'amount': '80.00',
+            'category': scat2.id,
+            'date': str(self.today),
+            'narrative': 'Milk purchase'
+        }, format='json')
+        self.assertEqual(res_diff_cat.status_code, 201)
+
+        # 4. Same category on different date is allowed
+        other_date = str(self.today.replace(day=self.today.day - 1 if self.today.day > 1 else 28))
+        res_diff_date = self.client.post('/api/transactions/', {
+            'amount': '120.00',
+            'category': scat1.id,
+            'date': other_date,
+            'narrative': 'Meat purchase other date'
+        }, format='json')
+        self.assertEqual(res_diff_date.status_code, 201)
+
+        # 5. Editing non-category field (amount) on tx1 succeeds without duplicate error
+        res_edit = self.client.patch(f'/api/transactions/{tx1_id}/', {
+            'amount': '175.00'
+        }, format='json')
+        self.assertEqual(res_edit.status_code, 200)
+        self.assertEqual(float(res_edit.data['amount']), 175.0)
+
+        # 6. Deactivating tx1 allows a new active entry for scat1 on self.today
+        self.client.post(f'/api/transactions/{tx1_id}/deactivate/')
+        res_new_after_deact = self.client.post('/api/transactions/', {
+            'amount': '220.00',
+            'category': scat1.id,
+            'date': str(self.today),
+            'narrative': 'New active meat purchase after deactivating old one'
+        }, format='json')
+        self.assertEqual(res_new_after_deact.status_code, 201)
+
+        # 7. Reactivating tx1 now fails because another active entry exists
+        res_reactivate = self.client.post(f'/api/transactions/{tx1_id}/activate/')
+        self.assertEqual(res_reactivate.status_code, 400)
+        self.assertIn('already exists', str(res_reactivate.data))

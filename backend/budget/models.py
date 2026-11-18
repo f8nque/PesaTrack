@@ -181,6 +181,13 @@ class Transaction(models.Model):
 
     class Meta:
         ordering = ('-transaction_date', '-id')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'transaction_date', 'spent_category'],
+                condition=models.Q(is_active=True, spent_category__isnull=False),
+                name='unique_active_transaction_per_category_date'
+            )
+        ]
 
     def __str__(self):
         return f"{self.kind}: {self.amount} ({self.transaction_date})"

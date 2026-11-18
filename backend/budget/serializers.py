@@ -153,6 +153,30 @@ class TransactionSerializer(Owned):
             d['to_account'] = None
             if kind == 'income':
                 d['debt'] = None
+
+        # Restrict duplicate entries for the same category and date
+        cat = d.get('spent_category') if 'spent_category' in d else getattr(self.instance, 'spent_category', None)
+        tx_date = d.get('transaction_date') if 'transaction_date' in d else getattr(self.instance, 'transaction_date', None)
+        is_active = d.get('is_active') if 'is_active' in d else getattr(self.instance, 'is_active', True)
+
+        if cat and tx_date and is_active:
+            req = self.context.get('request')
+            user = getattr(self.instance, 'user', None) or (req.user if req and req.user.is_authenticated else None)
+            if user:
+                qs = Transaction.objects.filter(
+                    user=user,
+                    transaction_date=tx_date,
+                    spent_category=cat,
+                    is_active=True
+                )
+                if self.instance and self.instance.pk:
+                    qs = qs.exclude(pk=self.instance.pk)
+                if qs.exists():
+                    cat_name = getattr(cat, 'name', str(cat))
+                    raise serializers.ValidationError({
+                        'category': f'An entry for category "{cat_name}" on {tx_date} already exists. Only one entry per category and date is allowed.'
+                    })
+
         return d
 
     def create(self, validated_data):
