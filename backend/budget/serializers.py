@@ -19,10 +19,38 @@ class Owned(serializers.ModelSerializer):
 
 class AccountSerializer(Owned):
     balance = serializers.SerializerMethodField()
+    liquid_balance = serializers.SerializerMethodField()
+    total_balance = serializers.SerializerMethodField()
+    is_low_balance = serializers.BooleanField(read_only=True)
+    parent_name = serializers.CharField(source='parent.name', read_only=True, default='')
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True, default='')
+    sub_accounts_count = serializers.SerializerMethodField()
+
     get_balance = lambda self, a: float(a.balance)
+    get_liquid_balance = lambda self, a: float(a.balance)
+    get_total_balance = lambda self, a: float(a.total_balance)
+    get_sub_accounts_count = lambda self, a: a.sub_accounts.filter(is_archived=False).count()
+
     class Meta:
         model = Account
         exclude = ['user']
+        read_only_fields = ['created_at', 'updated_at']
+
+    def create(self, validated_data):
+        req = self.context.get('request')
+        user = req.user if req and req.user.is_authenticated else None
+        if user:
+            # If user has no existing accounts, make this account the default
+            if not Account.objects.filter(user=user).exists():
+                validated_data['is_default'] = True
+            elif validated_data.get('is_default'):
+                Account.objects.filter(user=user).update(is_default=False)
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        if validated_data.get('is_default'):
+            Account.objects.filter(user=instance.user).exclude(pk=instance.pk).update(is_default=False)
+        return super().update(instance, validated_data)
 
 
 class BudgetGroupCategorySerializer(Owned):
@@ -130,8 +158,11 @@ class TransactionSerializer(Owned):
     budget_category_name = serializers.CharField(source='spent_category.budget_category.name', read_only=True, default='')
     grouping_name = serializers.CharField(source='spent_category.budget_category.grouping.name', read_only=True, default='')
     account_name = serializers.CharField(source='account.name', read_only=True, default='')
+    to_account_name = serializers.CharField(source='to_account.name', read_only=True, default='')
     narrative = serializers.CharField(source='description', required=False, allow_blank=True)
     date = serializers.DateField(source='transaction_date', required=False)
+    fee = serializers.DecimalField(max_digits=14, decimal_places=2, required=False, default=0)
+    adjustment_type = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     is_active = serializers.BooleanField(default=True)
 
     class Meta:
@@ -144,17 +175,27 @@ class TransactionSerializer(Owned):
         amt = g('amount')
         if amt is not None and amt <= 0:
             raise serializers.ValidationError('Amount must be above zero.')
+        fee = g('fee')
+        if fee is not None and fee < 0:
+            raise serializers.ValidationError('Fee cannot be negative.')
         kind = g('kind') or 'expense'
         if kind == 'transfer':
             if not g('to_account') or g('to_account') == g('account'):
                 raise serializers.ValidationError('Pick two different accounts for a transfer.')
             d['spent_category'] = d['debt'] = None
+        elif kind == 'adjustment':
+            d['to_account'] = None
+            d['spent_category'] = d['debt'] = None
+            if not g('account'):
+                raise serializers.ValidationError('Account is required for a balance adjustment.')
+            if not g('adjustment_type'):
+                d['adjustment_type'] = 'credit'
         else:
             d['to_account'] = None
             if kind == 'income':
                 d['debt'] = None
 
-        # Restrict duplicate entries for the same category and date
+        # Restrict duplicate entries for the same category and date (expenses)
         cat = d.get('spent_category') if 'spent_category' in d else getattr(self.instance, 'spent_category', None)
         tx_date = d.get('transaction_date') if 'transaction_date' in d else getattr(self.instance, 'transaction_date', None)
         is_active = d.get('is_active') if 'is_active' in d else getattr(self.instance, 'is_active', True)
@@ -183,8 +224,10 @@ class TransactionSerializer(Owned):
         req = self.context.get('request')
         if req and req.user.is_authenticated:
             if not validated_data.get('account'):
-                acct = Account.objects.filter(user=req.user).first()
+                acct = Account.objects.filter(user=req.user, is_default=True, is_archived=False).first()
                 if not acct:
-                    acct = Account.objects.create(user=req.user, name='Cash', kind='cash')
+                    acct = Account.objects.filter(user=req.user, is_archived=False).first()
+                if not acct:
+                    acct = Account.objects.create(user=req.user, name='Cash', kind='cash', is_default=True)
                 validated_data['account'] = acct
         return super().create(validated_data)

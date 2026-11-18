@@ -57,6 +57,17 @@ async function loadData() {
 // Active categories for spending
 const activeCategories = computed(() => categories.value.filter(c => c.is_active))
 
+// Active accounts (excluding archived ones, unless already selected)
+const activeAccounts = computed(() => {
+  return accounts.value.filter(a => !a.is_archived || a.id === formData.value.account)
+})
+
+const defaultAccount = computed(() => {
+  return accounts.value.find(a => a.is_default && !a.is_archived)
+    || accounts.value.find(a => !a.is_archived)
+    || accounts.value[0]
+})
+
 // Searchable category options within the Add/Edit Spend modal
 const filteredActiveCategories = computed(() => {
   const term = categorySearchTerm.value.toLowerCase().trim()
@@ -192,7 +203,7 @@ function openAddDialog() {
   formData.value = {
     ...defaultForm(),
     category: firstAvailable ? firstAvailable.id : '',
-    account: accounts.value[0]?.id || ''
+    account: defaultAccount.value?.id || accounts.value[0]?.id || ''
   }
   categorySearchTerm.value = ''
   showCategoryDropdown.value = false
@@ -206,7 +217,7 @@ function openEditDialog(tx) {
     id: tx.id,
     date: tx.transaction_date || tx.date || today,
     category: tx.category || tx.spent_category || '',
-    account: tx.account || accounts.value[0]?.id || '',
+    account: tx.account || defaultAccount.value?.id || accounts.value[0]?.id || '',
     amount: tx.amount,
     narrative: tx.description || tx.narrative || '',
     is_active: tx.is_active
@@ -489,11 +500,11 @@ onUnmounted(() => {
           </div>
 
           <!-- Account Dropdown -->
-          <div v-if="accounts.length" class="form-group">
+          <div v-if="activeAccounts.length" class="form-group">
             <label class="form-label">Account</label>
             <select v-model="formData.account" class="form-select">
-              <option v-for="a in accounts" :key="a.id" :value="a.id">
-                {{ a.name }} ({{ a.kind }})
+              <option v-for="a in activeAccounts" :key="a.id" :value="a.id">
+                {{ a.name }} ({{ a.kind_display || a.kind }}) {{ a.is_default ? '⭐' : '' }}
               </option>
             </select>
           </div>

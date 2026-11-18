@@ -673,3 +673,468 @@ li.stack {
   margin-top: 0;
   margin-bottom: 0.5rem;
 }
+
+/* ==========================================================================
+   Banking & Account Management Styles
+   ========================================================================== */
+
+.account-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.account-kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 1.15rem 1.35rem;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.account-kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-input-focus);
+}
+
+.account-kpi-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.account-kpi-val {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.account-kpi-card.kpi-accent .account-kpi-val {
+  color: var(--accent-orange);
+}
+.account-kpi-card.kpi-green .account-kpi-val {
+  color: var(--text-green);
+}
+.account-kpi-card.kpi-cyan .account-kpi-val {
+  color: var(--text-cyan);
+}
+.account-kpi-card.kpi-warn {
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.account-kpi-card.kpi-warn .account-kpi-val {
+  color: var(--text-danger);
+}
+
+/* Accounts Grid & Cards */
+.accounts-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.account-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-card);
+  padding: 1.35rem 1.5rem;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-card:hover {
+  border-color: var(--border-input);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+}
+
+.account-card.low-balance {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: linear-gradient(to right, rgba(248, 113, 113, 0.04), var(--bg-card) 20%);
+}
+
+.account-card.is-archived {
+  opacity: 0.65;
+  border-style: dashed;
+}
+
+.account-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.account-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.account-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--hover-subtle);
+  border: 1px solid var(--border-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.account-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.account-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.account-subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Badges for Accounts */
+.badge-default {
+  background: var(--accent-orange-light);
+  color: var(--accent-orange);
+  border: 1px solid rgba(255, 107, 0, 0.4);
+}
+
+.badge-pot {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.badge-low-balance {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--text-danger);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  animation: pulseAlert 2s infinite ease-in-out;
+}
+
+@keyframes pulseAlert {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+/* Account Balances section */
+.account-balance-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-input);
+}
+
+.balance-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.balance-label {
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.balance-amount {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.1;
+}
+
+.balance-amount.highlight {
+  color: var(--accent-orange);
+}
+
+.balance-aux-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.aux-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Low-balance alert banner inside card */
+.low-balance-alert-banner {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 0.65rem 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text-danger);
+  font-size: 0.86rem;
+  font-weight: 500;
+}
+
+/* Sub-accounts / Pots nested block */
+.pots-container {
+  border-left: 2px solid var(--accent-orange);
+  margin-left: 0.75rem;
+  padding-left: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pots-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pot-row {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  transition: all 0.15s ease;
+}
+
+.pot-row:hover {
+  border-color: var(--border-input);
+}
+
+.pot-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.pot-icon {
+  font-size: 1.15rem;
+}
+
+.pot-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.92rem;
+}
+
+.pot-balance {
+  font-weight: 700;
+  color: var(--text-cyan);
+  font-size: 0.96rem;
+}
+
+/* Action button bar on account card */
+.account-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--divider-subtle);
+}
+
+.btn-action-pill {
+  background: var(--hover-subtle);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-pill);
+  padding: 0.4rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.btn-action-pill:hover {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  border-color: var(--border-input);
+}
+
+.btn-action-pill.btn-reconcile:hover {
+  border-color: var(--text-cyan);
+  color: var(--text-cyan);
+}
+
+.btn-action-pill.btn-transfer:hover {
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+.btn-action-pill.btn-insights:hover {
+  border-color: var(--text-green);
+  color: var(--text-green);
+}
+
+/* Insights Mini-Dashboard inside Modal */
+.insights-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.insights-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.85rem;
+}
+
+.insight-kpi-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.insight-kpi-box .label {
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.insight-kpi-box .amount {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.insight-inflow .amount { color: var(--text-green); }
+.insight-outflow .amount { color: var(--text-danger); }
+.insight-net .amount { color: var(--text-primary); }
+.insight-daily .amount { color: var(--text-cyan); }
+
+/* Inflow vs Outflow Visual Bar */
+.flow-ratio-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.flow-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-card);
+  display: flex;
+  overflow: hidden;
+}
+
+.flow-bar-segment-in {
+  background: var(--text-green);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.flow-bar-segment-out {
+  background: var(--accent-orange);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Category Progress Bars */
+.category-spend-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.category-spend-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.category-spend-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+}
+
+.category-progress-track {
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.category-progress-fill {
+  height: 100%;
+  background: var(--accent-orange);
+  border-radius: 3px;
+}
+
+/* Transfer Preview Box */
+.transfer-preview-box {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-card);
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.transfer-preview-box strong {
+  color: var(--text-primary);
+}

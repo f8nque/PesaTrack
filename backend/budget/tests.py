@@ -170,3 +170,230 @@ class BudgetArchitectureTests(TestCase):
         res_reactivate = self.client.post(f'/api/transactions/{tx1_id}/activate/')
         self.assertEqual(res_reactivate.status_code, 400)
         self.assertIn('already exists', str(res_reactivate.data))
+
+
+class BankingAccountArchitectureTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='bankuser', password='password123')
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.today = timezone.localdate()
+
+    def test_account_type_and_opening_balance_as_of_date(self):
+        # 1. Maintain account type, opening balance, and as-of date
+        res = self.client.post('/api/accounts/', {
+            'name': 'M-Pesa Wallet',
+            'kind': 'mpesa',
+            'opening_balance': '5000.00',
+            'as_of_date': str(self.today)
+        }, format='json')
+        self.assertEqual(res.status_code, 201)
+        acct_id = res.data['id']
+        self.assertEqual(res.data['kind'], 'mpesa')
+        self.assertEqual(res.data['balance'], 5000.0)
+        self.assertEqual(res.data['as_of_date'], str(self.today))
+
+        # 2. Verify opening balance does NOT inflate "Income" analytics for the month
+        res_sum = self.client.get(f'/api/summary/?month={self.today.strftime("%Y-%m")}')
+        self.assertEqual(res_sum.status_code, 200)
+        self.assertEqual(res_sum.data['income'], 0.0)
+        self.assertEqual(res_sum.data['total_balance'], 5000.0)
+
+    def test_manual_balance_adjustment_reconciliation(self):
+        # Create account with 5,000 opening balance
+        res_acct = self.client.post('/api/accounts/', {
+            'name': 'KCB Bank',
+            'kind': 'bank',
+            'opening_balance': '5000.00'
+        }, format='json')
+        acct_id = res_acct.data['id']
+
+        # 1. Reconcile with actual balance 4,950 (deficit of 50 due to unrecorded pennies/forgotten fees)
+        res_rec1 = self.client.post(f'/api/accounts/{acct_id}/reconcile/', {
+            'actual_balance': '4950.00',
+            'notes': 'Reconciled with KCB mobile banking SMS'
+        }, format='json')
+        self.assertEqual(res_rec1.status_code, 201)
+        self.assertEqual(res_rec1.data['difference'], -50.0)
+        self.assertEqual(res_rec1.data['balance'], 4950.0)
+        self.assertEqual(res_rec1.data['transaction']['kind'], 'adjustment')
+        self.assertEqual(res_rec1.data['transaction']['adjustment_type'], 'debit')
+
+        # 2. Reconcile is silent: Does NOT inflate Income or Expense budget analytics
+        res_sum = self.client.get(f'/api/summary/?month={self.today.strftime("%Y-%m")}')
+        self.assertEqual(res_sum.data['income'], 0.0)
+        self.assertEqual(res_sum.data['spent'], 0.0)
+
+        # 3. Reconcile surplus: actual balance is 5,050 (diff: +100)
+        res_rec2 = self.client.post(f'/api/accounts/{acct_id}/reconcile/', {
+            'actual_balance': '5050.00',
+            'notes': 'Unrecorded cash deposit'
+        }, format='json')
+        self.assertEqual(res_rec2.status_code, 201)
+        self.assertEqual(res_rec2.data['difference'], 100.0)
+        self.assertEqual(res_rec2.data['balance'], 5050.0)
+        self.assertEqual(res_rec2.data['transaction']['adjustment_type'], 'credit')
+
+        # 4. Reconcile when balances match: no new transaction created
+        res_rec3 = self.client.post(f'/api/accounts/{acct_id}/reconcile/', {
+            'actual_balance': '5050.00'
+        }, format='json')
+        self.assertEqual(res_rec3.status_code, 200)
+        self.assertEqual(res_rec3.data['difference'], 0)
+
+    def test_minimum_balance_low_balance_alert(self):
+        # Minimum balance threshold: 1,000 KES
+        res = self.client.post('/api/accounts/', {
+            'name': 'M-Pesa Working Account',
+            'kind': 'mpesa',
+            'opening_balance': '1500.00',
+            'minimum_balance': '1000.00'
+        }, format='json')
+        acct_id = res.data['id']
+        self.assertFalse(res.data['is_low_balance'])
+
+        # Spend 700 -> balance becomes 800 (< 1000)
+        self.client.post('/api/transactions/', {
+            'account': acct_id,
+            'kind': 'expense',
+            'amount': '700.00',
+            'narrative': 'Supplies'
+        }, format='json')
+
+        res_check = self.client.get(f'/api/accounts/{acct_id}/')
+        self.assertEqual(res_check.data['balance'], 800.0)
+        self.assertTrue(res_check.data['is_low_balance'])
+
+    def test_account_to_account_transfers_and_tariffs(self):
+        res_bank = self.client.post('/api/accounts/', {'name': 'Bank', 'kind': 'bank', 'opening_balance': '10000.00'}, format='json')
+        res_mpesa = self.client.post('/api/accounts/', {'name': 'M-Pesa', 'kind': 'mpesa', 'opening_balance': '2000.00'}, format='json')
+        bank_id = res_bank.data['id']
+        mpesa_id = res_mpesa.data['id']
+
+        # Transfer 3,000 from Bank to M-Pesa with a 25 KES tariff
+        res_xfer = self.client.post('/api/transactions/', {
+            'kind': 'transfer',
+            'account': bank_id,
+            'to_account': mpesa_id,
+            'amount': '3000.00',
+            'fee': '25.00',
+            'narrative': 'Move float from Bank to M-Pesa'
+        }, format='json')
+        self.assertEqual(res_xfer.status_code, 201)
+
+        # Bank deducted: 3000 + 25 = 3025 -> 10000 - 3025 = 6975
+        res_b = self.client.get(f'/api/accounts/{bank_id}/')
+        self.assertEqual(res_b.data['balance'], 6975.0)
+
+        # M-Pesa credited: 3000 -> 2000 + 3000 = 5000
+        res_m = self.client.get(f'/api/accounts/{mpesa_id}/')
+        self.assertEqual(res_m.data['balance'], 5000.0)
+
+        # Transfer does NOT count as Income or Expense in budget summary
+        res_sum = self.client.get(f'/api/summary/?month={self.today.strftime("%Y-%m")}')
+        self.assertEqual(res_sum.data['income'], 0.0)
+        self.assertEqual(res_sum.data['spent'], 0.0)
+        self.assertEqual(res_sum.data['fees'], 25.0)
+
+    def test_default_account_quick_select(self):
+        # First account automatically becomes default
+        r1 = self.client.post('/api/accounts/', {'name': 'M-Pesa', 'kind': 'mpesa'}, format='json')
+        self.assertTrue(r1.data['is_default'])
+
+        # Second account created with is_default=True switches default
+        r2 = self.client.post('/api/accounts/', {'name': 'Equity Bank', 'kind': 'bank', 'is_default': True}, format='json')
+        self.assertTrue(r2.data['is_default'])
+
+        r1_updated = self.client.get(f'/api/accounts/{r1.data["id"]}/')
+        self.assertFalse(r1_updated.data['is_default'])
+
+        # Explicit set_default action
+        self.client.post(f'/api/accounts/{r1.data["id"]}/set_default/')
+        r1_default = self.client.get(f'/api/accounts/{r1.data["id"]}/')
+        self.assertTrue(r1_default.data['is_default'])
+
+    def test_archive_and_hide_account(self):
+        r = self.client.post('/api/accounts/', {'name': 'Old Closed Till', 'kind': 'mpesa', 'opening_balance': '500.00'}, format='json')
+        acct_id = r.data['id']
+
+        # Add transaction
+        self.client.post('/api/transactions/', {'account': acct_id, 'kind': 'expense', 'amount': '200.00'}, format='json')
+
+        # Archive account
+        res_arch = self.client.post(f'/api/accounts/{acct_id}/archive/')
+        self.assertEqual(res_arch.status_code, 200)
+        self.assertTrue(res_arch.data['is_archived'])
+
+        # Default GET /api/accounts/ excludes archived accounts
+        res_list = self.client.get('/api/accounts/')
+        self.assertNotIn(acct_id, [a['id'] for a in res_list.data])
+
+        # Query with ?include_archived=true includes it
+        res_all = self.client.get('/api/accounts/?include_archived=true')
+        self.assertIn(acct_id, [a['id'] for a in res_all.data])
+
+        # Historical transactions preserved
+        res_txs = self.client.get(f'/api/transactions/?date={self.today}')
+        self.assertTrue(any(t['account'] == acct_id for t in res_txs.data))
+
+        # Unarchive
+        self.client.post(f'/api/accounts/{acct_id}/unarchive/')
+        res_unarch = self.client.get(f'/api/accounts/{acct_id}/')
+        self.assertFalse(res_unarch.data['is_archived'])
+
+    def test_sub_accounts_and_pots(self):
+        # Parent Account (e.g. M-Pesa liquid wallet)
+        res_parent = self.client.post('/api/accounts/', {
+            'name': 'M-Pesa Primary',
+            'kind': 'mpesa',
+            'opening_balance': '12000.00'
+        }, format='json')
+        parent_id = res_parent.data['id']
+
+        # Sub-Account / Pot (e.g. M-Shwari Lock Savings)
+        res_pot = self.client.post('/api/accounts/', {
+            'name': 'M-Shwari Lock Savings',
+            'kind': 'mpesa',
+            'parent': parent_id,
+            'is_pot': True,
+            'opening_balance': '30000.00'
+        }, format='json')
+        pot_id = res_pot.data['id']
+
+        # Parent shows liquid balance and total balance (Liquid + Pots)
+        res_p = self.client.get(f'/api/accounts/{parent_id}/')
+        self.assertEqual(res_p.data['liquid_balance'], 12000.0)
+        self.assertEqual(res_p.data['total_balance'], 42000.0)
+        self.assertEqual(res_p.data['sub_accounts_count'], 1)
+
+    def test_account_insights(self):
+        # Create account
+        res_acct = self.client.post('/api/accounts/', {'name': 'M-Pesa Wallet', 'kind': 'mpesa', 'opening_balance': '10000.00'}, format='json')
+        acct_id = res_acct.data['id']
+
+        group = BudgetGroupCategory.objects.create(user=self.user, name='LIVING', priority=1)
+        bcat = BudgetCategory.objects.create(user=self.user, grouping=group, name='Groceries', category_type='needs')
+        scat = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='Supermarket')
+
+        # Record income
+        self.client.post('/api/transactions/', {'account': acct_id, 'kind': 'income', 'amount': '25000.00'}, format='json')
+
+        # Record expense with fee
+        self.client.post('/api/transactions/', {
+            'account': acct_id,
+            'kind': 'expense',
+            'category': scat.id,
+            'amount': '4500.00',
+            'fee': '23.00',
+            'narrative': 'Monthly groceries'
+        }, format='json')
+
+        # Request insights
+        res_ins = self.client.get(f'/api/accounts/{acct_id}/insights/')
+        self.assertEqual(res_ins.status_code, 200)
+        self.assertEqual(res_ins.data['inflow']['income'], 25000.0)
+        self.assertEqual(res_ins.data['outflow']['expenses'], 4500.0)
+        self.assertEqual(res_ins.data['outflow']['fees'], 23.0)
+        self.assertGreater(res_ins.data['average_daily_spend'], 0)
+        self.assertEqual(len(res_ins.data['top_categories']), 1)
+        self.assertEqual(res_ins.data['top_categories'][0]['name'], 'Supermarket')

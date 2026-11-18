@@ -5,22 +5,82 @@ from django.db.models import Sum
 from django.utils import timezone
 
 U = settings.AUTH_USER_MODEL
-total = lambda qs: qs.aggregate(t=Sum('amount'))['t'] or 0
+total = lambda qs, field='amount': qs.aggregate(t=Sum(field))['t'] or 0
 
 
 class Account(models.Model):
-    KINDS = [(k, k) for k in ('bank', 'mpesa', 'cash', 'sacco', 'mmf', 'investment', 'credit_card')]
+    KINDS = [
+        ('bank', 'Bank Account'),
+        ('mpesa', 'M-Pesa'),
+        ('cash', 'Cash'),
+        ('sacco', 'SACCO'),
+        ('mmf', 'Money Market Fund (MMF)'),
+        ('investment', 'Investment'),
+        ('credit_card', 'Credit Card'),
+    ]
     user = models.ForeignKey(U, on_delete=models.CASCADE)
     name = models.CharField(max_length=60)
     kind = models.CharField(max_length=20, choices=KINDS, default='bank')
+    account_number = models.CharField(max_length=50, blank=True, default='', help_text="e.g. Account number, Till, or Paybill")
     opening_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    as_of_date = models.DateField(default=timezone.localdate, help_text="Opening balance as-of date")
+    minimum_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0, help_text="Low balance alert threshold")
+    is_default = models.BooleanField(default=False, help_text="Primary quick-select default account")
+    is_archived = models.BooleanField(default=False, help_text="Archived accounts are hidden from transaction entry")
+    parent = models.ForeignKey(
+        'self', null=True, blank=True, related_name='sub_accounts',
+        on_delete=models.SET_NULL, help_text="Parent account for sub-accounts/pots"
+    )
+    is_pot = models.BooleanField(default=False, help_text="Whether this is a locked goal or savings pot")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('is_archived', '-is_default', 'name')
 
     @property
     def balance(self):
+        """Liquid balance of this account taking into account income, expenses, transfers, fees, and silent adjustments."""
         t = self.transactions.filter(is_active=True)
-        return (self.opening_balance + total(t.filter(kind='income'))
-                - total(t.filter(kind__in=['expense', 'transfer']))
-                + total(self.incoming.filter(is_active=True, kind='transfer')))
+        
+        # 1. Income: money coming into this account (net of any income fee)
+        inc = total(t.filter(kind='income'))
+        inc_fee = total(t.filter(kind='income').exclude(fee=0), 'fee')
+        
+        # 2. Expenses: money spent from this account + fees
+        exp = total(t.filter(kind='expense'))
+        exp_fee = total(t.filter(kind='expense').exclude(fee=0), 'fee')
+        
+        # 3. Transfers out: money sent to another account + transfer tariff/fee
+        xfer_out = total(t.filter(kind='transfer'))
+        xfer_fee = total(t.filter(kind='transfer').exclude(fee=0), 'fee')
+        
+        # 4. Transfers in: money received from another account
+        xfer_in = total(self.incoming.filter(is_active=True, kind='transfer'))
+        
+        # 5. Silent balance adjustments (Reconciliation):
+        # credit increases balance, debit decreases balance
+        adj_credit = total(t.filter(kind='adjustment', adjustment_type='credit'))
+        adj_debit = total(t.filter(kind='adjustment', adjustment_type='debit'))
+        
+        return (
+            self.opening_balance
+            + (inc - inc_fee)
+            - (exp + exp_fee)
+            - (xfer_out + xfer_fee)
+            + xfer_in
+            + adj_credit - adj_debit
+        )
+
+    @property
+    def total_balance(self):
+        """Liquid balance of this account plus any active sub-accounts / pots."""
+        sub_total = sum(sub.balance for sub in self.sub_accounts.filter(is_archived=False))
+        return self.balance + sub_total
+
+    @property
+    def is_low_balance(self):
+        return bool(self.minimum_balance and self.minimum_balance > 0 and self.balance < self.minimum_balance)
 
     def __str__(self):
         return self.name
@@ -164,10 +224,21 @@ class BudgetItem(models.Model):
 
 
 class Transaction(models.Model):
-    """income | expense | transfer. Links to SpentCategory for expenses."""
-    KINDS = [('income', 'income'), ('expense', 'expense'), ('transfer', 'transfer')]
+    """income | expense | transfer | adjustment. Links to SpentCategory for expenses."""
+    KINDS = [
+        ('income', 'income'),
+        ('expense', 'expense'),
+        ('transfer', 'transfer'),
+        ('adjustment', 'adjustment'),
+    ]
+    ADJUSTMENT_TYPES = [
+        ('credit', 'credit'),
+        ('debit', 'debit'),
+    ]
     user = models.ForeignKey(U, on_delete=models.CASCADE)
-    kind = models.CharField(max_length=10, choices=KINDS, default='expense')
+    kind = models.CharField(max_length=15, choices=KINDS, default='expense')
+    adjustment_type = models.CharField(max_length=10, choices=ADJUSTMENT_TYPES, null=True, blank=True)
+    fee = models.DecimalField(max_digits=14, decimal_places=2, default=0, help_text="Transaction fee / tariff")
     account = models.ForeignKey(Account, null=True, blank=True, related_name='transactions', on_delete=models.CASCADE)
     to_account = models.ForeignKey(Account, null=True, blank=True, related_name='incoming', on_delete=models.CASCADE)
     spent_category = models.ForeignKey(SpentCategory, null=True, blank=True, related_name='transactions', on_delete=models.SET_NULL)
