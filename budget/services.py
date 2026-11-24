@@ -23,9 +23,10 @@ def parse_month(month_str=None):
 
 def resolve_default_account(user):
     """Return user's active default account, first active account, or create a Cash account."""
-    acct = Account.objects.filter(user=user, is_default=True, is_archived=False).first()
+    qs = Account.objects.filter(user=user, is_archived=False).exclude(kind='debtors')
+    acct = qs.filter(is_default=True).first()
     if not acct:
-        acct = Account.objects.filter(user=user, is_archived=False).first()
+        acct = qs.first()
     if not acct:
         acct = Account.objects.create(user=user, name='Cash', kind='cash', is_default=True)
     return acct
@@ -80,7 +81,7 @@ def compute_summary(user, month_str=None):
     fees = float(inm.exclude(fee=0).aggregate(t=Sum('fee'))['t'] or 0)
     left = income - spent - debt_paid
 
-    active_accounts = Account.objects.filter(user=user, is_archived=False)
+    active_accounts = Account.objects.filter(user=user, is_archived=False).exclude(kind='debtors')
     liquid_balance = float(sum(a.balance for a in active_accounts.filter(is_pot=False)))
     total_balance = float(sum(a.balance for a in active_accounts))
     pots_balance = float(sum(a.balance for a in active_accounts.filter(is_pot=True)))
@@ -232,4 +233,171 @@ def compute_account_insights(account, month_str=None, timeframe='month'):
         'top_categories': top_categories,
         'recent_qs': recent_qs,
         'pots': pots,
+    }
+
+
+def resolve_or_register_debtor_account(user, account_id=None, debtor_name='', account_number=''):
+    """Find an existing debtor account (by id or case-insensitive name) or register a new one."""
+    clean_name = (debtor_name or '').strip()
+    clean_num = (account_number or '').strip()
+
+    if clean_name:
+        existing = Account.objects.filter(
+            user=user, kind='debtors', name__iexact=clean_name
+        ).first()
+        if existing:
+            if existing.is_archived:
+                existing.is_archived = False
+                existing.save(update_fields=['is_archived'])
+            return existing, False
+        created = Account.objects.create(
+            user=user,
+            name=clean_name,
+            kind='debtors',
+            account_number=clean_num,
+        )
+        return created, True
+
+    if account_id:
+        existing = Account.objects.filter(user=user, pk=account_id).first()
+        if existing:
+            return existing, False
+
+    return None, False
+
+
+def compute_debt_analysis(user, year=None):
+    """Build a Debtors vs Months (Jan-Dec) matrix of loans taken and repayments for a given year."""
+    today = timezone.localdate()
+    try:
+        selected_year = int(year) if year is not None and str(year).strip() else today.year
+        if not (1900 <= selected_year <= 2100):
+            selected_year = today.year
+    except (ValueError, TypeError):
+        selected_year = today.year
+
+    debt_years = {d.year for d in Debt.objects.filter(user=user).dates('registration_date', 'year')}
+    repay_years = {
+        d.year for d in Transaction.objects.filter(
+            user=user, debt__isnull=False, is_active=True
+        ).dates('transaction_date', 'year')
+    }
+    available_years = sorted(debt_years | repay_years | {today.year, selected_year}, reverse=True)
+
+    months_meta = [
+        {'num': m, 'short': calendar.month_abbr[m], 'full': calendar.month_name[m]}
+        for m in range(1, 13)
+    ]
+
+    debtor_accounts = list(
+        Account.objects.filter(user=user, kind='debtors', is_archived=False).order_by('name')
+    )
+    debts = list(
+        Debt.objects.filter(user=user).select_related('account').order_by('name', 'id')
+    )
+    repayments = list(
+        Transaction.objects.filter(
+            user=user, debt__isnull=False, is_active=True
+        ).select_related('debt__account')
+    )
+
+    rows_map = {}
+
+    def _ensure_row(key, label, account_id=None):
+        if key not in rows_map:
+            rows_map[key] = {
+                'key': key,
+                'label': label,
+                'account_id': account_id,
+                'months': {m: {'taken': Decimal('0'), 'paid': Decimal('0')} for m in range(1, 13)},
+                'total_borrowed': Decimal('0'),
+                'total_paid': Decimal('0'),
+            }
+        return rows_map[key]
+
+    for acct in debtor_accounts:
+        _ensure_row(('acct', acct.id), acct.name, acct.id)
+
+    debt_row_key = {}
+    for d in debts:
+        if d.account_id:
+            key = ('acct', d.account_id)
+            label = d.account.name
+            acct_id = d.account_id
+        else:
+            key = ('legacy', d.name.strip().lower() or f'debt-{d.id}')
+            label = d.name
+            acct_id = None
+        row = _ensure_row(key, label, acct_id)
+        debt_row_key[d.id] = key
+        row['total_borrowed'] += d.principal
+        if d.registration_date and d.registration_date.year == selected_year:
+            row['months'][d.registration_date.month]['taken'] += d.principal
+
+    for tx in repayments:
+        key = debt_row_key.get(tx.debt_id)
+        if not key:
+            continue
+        row = rows_map[key]
+        row['total_paid'] += tx.amount
+        if tx.transaction_date and tx.transaction_date.year == selected_year:
+            row['months'][tx.transaction_date.month]['paid'] += tx.amount
+
+    monthly_totals = [{'month': m, 'taken': Decimal('0'), 'paid': Decimal('0')} for m in range(1, 13)]
+    rows = []
+    grand_year_taken = Decimal('0')
+    grand_year_paid = Decimal('0')
+    grand_balance = Decimal('0')
+
+    for entry in sorted(rows_map.values(), key=lambda r: r['label'].lower()):
+        month_cells = []
+        year_taken = Decimal('0')
+        year_paid = Decimal('0')
+        for idx in range(12):
+            m = idx + 1
+            t_amt = entry['months'][m]['taken']
+            p_amt = entry['months'][m]['paid']
+            year_taken += t_amt
+            year_paid += p_amt
+            monthly_totals[idx]['taken'] += t_amt
+            monthly_totals[idx]['paid'] += p_amt
+            month_cells.append({
+                'month': m,
+                'taken': float(t_amt),
+                'paid': float(p_amt),
+            })
+
+        bal = entry['total_borrowed'] - entry['total_paid']
+        grand_year_taken += year_taken
+        grand_year_paid += year_paid
+        grand_balance += bal
+
+        rows.append({
+            'label': entry['label'],
+            'account_id': entry['account_id'],
+            'months': month_cells,
+            'year_taken': float(year_taken),
+            'year_paid': float(year_paid),
+            'total_borrowed': float(entry['total_borrowed']),
+            'total_paid': float(entry['total_paid']),
+            'balance': float(bal),
+        })
+
+    return {
+        'selected_year': selected_year,
+        'available_years': available_years,
+        'months': months_meta,
+        'rows': rows,
+        'monthly_totals': [
+            {
+                'month': mt['month'],
+                'taken': float(mt['taken']),
+                'paid': float(mt['paid']),
+            }
+            for mt in monthly_totals
+        ],
+        'grand_year_taken': float(grand_year_taken),
+        'grand_year_paid': float(grand_year_paid),
+        'grand_net_change': float(grand_year_taken - grand_year_paid),
+        'grand_balance': float(grand_balance),
     }

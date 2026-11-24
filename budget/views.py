@@ -10,6 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -21,8 +22,9 @@ from .models import (
     Debt, SpentCategory, Transaction, total
 )
 from .services import (
-    compute_account_insights, compute_summary, parse_month,
-    reconcile_account_balance, resolve_default_account
+    compute_account_insights, compute_debt_analysis, compute_summary,
+    parse_month, reconcile_account_balance, resolve_default_account,
+    resolve_or_register_debtor_account,
 )
 from .templatetags.budget_extras import ACCOUNT_KINDS_META
 
@@ -30,7 +32,6 @@ NAV_TABS = [
     {'id': 'today', 'url_name': 'today', 'label': "Today's Spends"},
     {'id': 'categories', 'url_name': 'categories', 'label': 'Categories'},
     {'id': 'dashboard', 'url_name': 'dashboard', 'label': 'Dashboard'},
-    {'id': 'transactions', 'url_name': 'transactions', 'label': 'Transactions'},
     {'id': 'accounts', 'url_name': 'accounts', 'label': 'Accounts'},
     {'id': 'budget', 'url_name': 'budget', 'label': 'Budget Plan'},
     {'id': 'debts', 'url_name': 'debts', 'label': 'Debts'},
@@ -152,6 +153,7 @@ def today_view(request):
     active_categories = [c for c in categories if c.is_active]
     active_accounts = list(
         Account.objects.filter(user=request.user, is_archived=False)
+        .exclude(kind='debtors')
         .order_by('-is_default', 'name')
     )
     default_account = next((a for a in active_accounts if a.is_default), active_accounts[0] if active_accounts else None)
@@ -500,7 +502,7 @@ def transactions_view(request):
         .select_related('account', 'to_account', 'spent_category__budget_category__grouping')
         .order_by('-transaction_date', '-id')
     )
-    all_accounts = list(Account.objects.filter(user=request.user).order_by('-is_default', 'name'))
+    all_accounts = list(Account.objects.filter(user=request.user).exclude(kind='debtors').order_by('-is_default', 'name'))
     active_accounts = [a for a in all_accounts if not a.is_archived]
     default_account = next((a for a in active_accounts if a.is_default), active_accounts[0] if active_accounts else None)
     spent_cats = list(
@@ -666,12 +668,13 @@ def accounts_view(request):
         if a.is_pot and a.parent_id and a.parent_id not in top_level_ids
     ]
 
-    total_net_worth = sum((a.balance for a in active_accounts), Decimal('0'))
-    total_liquid = sum((a.balance for a in active_accounts if not a.is_pot), Decimal('0'))
-    total_pots = sum((a.balance for a in active_accounts if a.is_pot), Decimal('0'))
-    low_balance_count = sum(1 for a in active_accounts if a.is_low_balance)
+    non_debtor_active = [a for a in active_accounts if a.kind != 'debtors']
+    total_net_worth = sum((a.balance for a in non_debtor_active), Decimal('0'))
+    total_liquid = sum((a.balance for a in non_debtor_active if not a.is_pot), Decimal('0'))
+    total_pots = sum((a.balance for a in non_debtor_active if a.is_pot), Decimal('0'))
+    low_balance_count = sum(1 for a in non_debtor_active if a.is_low_balance)
 
-    parent_options = [a for a in active_accounts if not a.is_pot]
+    parent_options = [a for a in non_debtor_active if not a.is_pot]
     show_archived = request.GET.get('show_archived') == '1'
 
     # Optional server-rendered Insights modal when ?insights=<id>
@@ -1112,44 +1115,193 @@ def budget_item_delete(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# Debts
+# Debts (Credit Registration, Payments, Analysis)
 # ---------------------------------------------------------------------------
 
-@login_required
-def debts_view(request):
-    debts = list(Debt.objects.filter(user=request.user).order_by('id'))
+def _render_debts(request, default_tab='credits'):
+    today = timezone.localdate()
+    tab = request.GET.get('tab', default_tab)
+    if tab not in ('credits', 'payments', 'analysis'):
+        tab = default_tab
+
+    debts = list(
+        Debt.objects.filter(user=request.user)
+        .select_related('account')
+        .order_by('-registration_date', '-id')
+    )
+    total_borrowed = Decimal('0')
+    total_repaid = Decimal('0')
+    total_outstanding = Decimal('0')
+    active_credits_count = 0
+
     for d in debts:
+        paid = Decimal(d.total_paid or 0)
+        bal = Decimal(d.balance or 0)
+        d.paid_amount = paid
+        d.is_overdue = bool(d.service_date and bal > 0 and d.service_date < today)
         if d.principal and d.principal > 0:
-            pct = float((d.principal - d.balance) / d.principal) * 100
+            pct = float(paid / d.principal) * 100
             d.paid_pct = max(0, min(100, round(pct, 1)))
         else:
             d.paid_pct = 0
+        total_borrowed += d.principal
+        total_repaid += paid
+        total_outstanding += bal
+        if bal > 0:
+            active_credits_count += 1
 
+    debtor_accounts = list(
+        Account.objects.filter(user=request.user, kind='debtors', is_archived=False)
+        .order_by('name')
+    )
     active_accounts = list(
         Account.objects.filter(user=request.user, is_archived=False)
+        .exclude(kind='debtors')
         .order_by('-is_default', 'name')
     )
     default_account = next((a for a in active_accounts if a.is_default), active_accounts[0] if active_accounts else None)
 
+    # Payments tab filtering
+    filter_debt_raw = (request.GET.get('debt') or '').strip()
+    filter_debtor_raw = (request.GET.get('debtor') or '').strip()
+    filter_year_raw = (request.GET.get('year') or '').strip()
+    show_voided = request.GET.get('show_voided') == '1'
+
+    filter_debt_id = int(filter_debt_raw) if filter_debt_raw.isdigit() else None
+    filter_debtor_id = int(filter_debtor_raw) if filter_debtor_raw.isdigit() else None
+    filter_year = int(filter_year_raw) if filter_year_raw.isdigit() else None
+
+    repayments_qs = (
+        Transaction.objects.filter(user=request.user, debt__isnull=False)
+        .select_related('debt__account', 'account')
+        .order_by('-transaction_date', '-id')
+    )
+    if not show_voided:
+        repayments_qs = repayments_qs.filter(is_active=True)
+    if filter_debt_id:
+        repayments_qs = repayments_qs.filter(debt_id=filter_debt_id)
+    if filter_debtor_id:
+        repayments_qs = repayments_qs.filter(debt__account_id=filter_debtor_id)
+    if filter_year:
+        repayments_qs = repayments_qs.filter(transaction_date__year=filter_year)
+
+    repayments = list(repayments_qs)
+    repayments_total_active = sum((tx.amount for tx in repayments if tx.is_active), Decimal('0'))
+
+    # Analysis tab data
+    analysis = compute_debt_analysis(request.user, year=request.GET.get('year'))
+    analysis_metric = request.GET.get('metric', 'both')
+    if analysis_metric not in ('both', 'taken', 'paid'):
+        analysis_metric = 'both'
+
     ctx = {
         **_base_context('debts'),
+        'current_tab': tab,
+        'today_iso': today.isoformat(),
         'debts': debts,
+        'debtor_accounts': debtor_accounts,
         'active_accounts': active_accounts,
         'default_account': default_account,
+        'total_borrowed': total_borrowed,
+        'total_repaid': total_repaid,
+        'total_outstanding': total_outstanding,
+        'active_credits_count': active_credits_count,
+        'repayments': repayments,
+        'repayments_total_active': repayments_total_active,
+        'filter_debt_id': filter_debt_id,
+        'filter_debtor_id': filter_debtor_id,
+        'filter_year': filter_year,
+        'show_voided': show_voided,
+        'preselect_debt_id': filter_debt_id,
+        'analysis': analysis,
+        'analysis_metric': analysis_metric,
     }
     return render(request, 'budget/debts.html', ctx)
 
 
 @login_required
+def debts_view(request):
+    return _render_debts(request, default_tab='credits')
+
+
+@login_required
+def debts_payments(request):
+    return _render_debts(request, default_tab='payments')
+
+
+@login_required
+def debts_analysis(request):
+    return _render_debts(request, default_tab='analysis')
+
+
+@login_required
+def debts_account_check(request):
+    name = (request.GET.get('name') or '').strip()
+    if not name:
+        return JsonResponse({'exists': False, 'account': None})
+    acct = Account.objects.filter(
+        user=request.user, kind='debtors', name__iexact=name
+    ).first()
+    if not acct:
+        return JsonResponse({'exists': False, 'account': None})
+    return JsonResponse({
+        'exists': True,
+        'account': {
+            'id': acct.id,
+            'name': acct.name,
+            'account_number': acct.account_number,
+        },
+    })
+
+
+@login_required
+@require_POST
+def debts_account_register(request):
+    name = (request.POST.get('name') or '').strip()
+    account_number = (request.POST.get('account_number') or '').strip()
+    if not name:
+        messages.error(request, 'Debtor account name is required.')
+        return _safe_redirect(request, 'debts')
+
+    acct, created = resolve_or_register_debtor_account(
+        request.user, debtor_name=name, account_number=account_number
+    )
+    if created:
+        messages.success(request, f'Registered new debtor account "{acct.name}".')
+    else:
+        messages.info(request, f'Debtor account "{acct.name}" already exists — ready to link.')
+    return _safe_redirect(request, 'debts')
+
+
+@login_required
 @require_POST
 def debts_add(request):
+    debt_id = (request.POST.get('id') or '').strip()
     name = (request.POST.get('name') or '').strip()
+    account_id = (request.POST.get('account') or '').strip()
+    debtor_name = (request.POST.get('debtor_account_name') or '').strip()
+    debtor_number = (request.POST.get('debtor_account_number') or '').strip()
+    reg_date = _parse_date(request.POST.get('registration_date'))
+    service_raw = (request.POST.get('service_date') or '').strip()
+    service_date = _parse_date(service_raw) if service_raw else None
+    comment = (request.POST.get('comment') or '').strip()
+
+    debtor_account, acct_created = resolve_or_register_debtor_account(
+        request.user,
+        account_id=account_id if account_id.isdigit() else None,
+        debtor_name=debtor_name,
+        account_number=debtor_number,
+    )
+
+    if not name and debtor_account:
+        name = debtor_account.name
+
     if not name:
-        messages.error(request, 'Debt name is required.')
+        messages.error(request, 'Please select or register a debtor account, or enter a loan name.')
         return redirect('debts')
 
     try:
-        principal = _parse_decimal(request.POST.get('principal'), 'principal', allow_zero=True)
+        principal = _parse_decimal(request.POST.get('principal'), 'amount borrowed', allow_zero=True)
         ir_raw = (request.POST.get('interest_rate') or '').strip()
         interest_rate = _parse_decimal(ir_raw, 'interest rate', allow_zero=True) if ir_raw else Decimal('0')
         mp_raw = (request.POST.get('min_payment') or '').strip()
@@ -1158,29 +1310,49 @@ def debts_add(request):
         messages.error(request, str(exc))
         return redirect('debts')
 
-    Debt.objects.create(
-        user=request.user,
-        name=name,
-        principal=principal,
-        interest_rate=interest_rate,
-        min_payment=min_payment,
-    )
-    messages.success(request, f'Debt "{name}" added.')
+    if debt_id:
+        debt = get_object_or_404(Debt, pk=debt_id, user=request.user)
+        debt.name = name
+        debt.account = debtor_account
+        debt.principal = principal
+        debt.registration_date = reg_date
+        debt.service_date = service_date
+        debt.comment = comment
+        debt.interest_rate = interest_rate
+        debt.min_payment = min_payment
+        debt.save()
+        messages.success(request, f'Credit "{debt.name}" updated.')
+    else:
+        Debt.objects.create(
+            user=request.user,
+            account=debtor_account,
+            name=name,
+            principal=principal,
+            registration_date=reg_date,
+            service_date=service_date,
+            comment=comment,
+            interest_rate=interest_rate,
+            min_payment=min_payment,
+        )
+        suffix = f' (new debtor account "{debtor_account.name}" registered)' if acct_created else ''
+        messages.success(request, f'Credit "{name}" registered{suffix}.')
+
     return redirect('debts')
 
 
-@login_required
-@require_POST
-def debts_repay(request, pk):
-    debt = get_object_or_404(Debt, pk=pk, user=request.user)
+def _record_debt_repayment(request, debt_id):
+    debt = get_object_or_404(Debt, pk=debt_id, user=request.user)
     acct_id = request.POST.get('account')
     account = get_object_or_404(Account, pk=acct_id, user=request.user) if acct_id else resolve_default_account(request.user)
+    tx_date = _parse_date(request.POST.get('transaction_date'))
+    comment = (request.POST.get('comment') or request.POST.get('description') or '').strip()
+    description = comment or f'Repayment: {debt.name}'
 
     try:
         amount = _parse_decimal(request.POST.get('amount'), 'repayment amount')
     except ValueError as exc:
         messages.error(request, str(exc))
-        return redirect('debts')
+        return _safe_redirect(request, 'debts')
 
     Transaction.objects.create(
         user=request.user,
@@ -1188,12 +1360,28 @@ def debts_repay(request, pk):
         account=account,
         debt=debt,
         amount=amount,
-        transaction_date=timezone.localdate(),
-        description=f'Repayment: {debt.name}',
+        transaction_date=tx_date,
+        description=description,
         is_active=True,
     )
     messages.success(request, f'Recorded repayment of {amount} for "{debt.name}".')
-    return redirect('debts')
+    return _safe_redirect(request, 'debts')
+
+
+@login_required
+@require_POST
+def debts_repay(request, pk):
+    return _record_debt_repayment(request, pk)
+
+
+@login_required
+@require_POST
+def debts_repay_form(request):
+    debt_id = (request.POST.get('debt') or '').strip()
+    if not debt_id.isdigit():
+        messages.error(request, 'Please select a credit / debt to repay.')
+        return _safe_redirect(request, 'debts_payments')
+    return _record_debt_repayment(request, int(debt_id))
 
 
 @login_required

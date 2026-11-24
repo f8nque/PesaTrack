@@ -12,6 +12,7 @@ ACCOUNT_KINDS_META = {
     'mmf': {'name': 'Money Market Fund (MMF)', 'icon': '📈'},
     'investment': {'name': 'Investment / Stocks', 'icon': '💎'},
     'credit_card': {'name': 'Credit Card', 'icon': '💳'},
+    'debtors': {'name': 'Debtors', 'icon': '🧾'},
 }
 
 

@@ -17,6 +17,7 @@ class Account(models.Model):
         ('mmf', 'Money Market Fund (MMF)'),
         ('investment', 'Investment'),
         ('credit_card', 'Credit Card'),
+        ('debtors', 'Debtors'),
     ]
     user = models.ForeignKey(U, on_delete=models.CASCADE)
     name = models.CharField(max_length=60)
@@ -164,14 +165,28 @@ Category = SpentCategory
 
 class Debt(models.Model):
     user = models.ForeignKey(U, on_delete=models.CASCADE)
+    account = models.ForeignKey(
+        Account, null=True, blank=True, related_name='debts',
+        on_delete=models.SET_NULL, help_text="Linked debtor account (category: debtors)"
+    )
     name = models.CharField(max_length=100)
     principal = models.DecimalField(max_digits=14, decimal_places=2)
+    registration_date = models.DateField(default=timezone.localdate)
+    service_date = models.DateField(null=True, blank=True)
+    comment = models.TextField(blank=True, default='')
     interest_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     min_payment = models.DecimalField(max_digits=14, decimal_places=2, default=0)
 
+    class Meta:
+        ordering = ('-registration_date', '-id')
+
+    @property
+    def total_paid(self):
+        return total(self.repayments.filter(is_active=True))
+
     @property
     def balance(self):
-        return self.principal - total(self.repayments.filter(is_active=True))
+        return self.principal - self.total_paid
 
     def __str__(self):
         return self.name

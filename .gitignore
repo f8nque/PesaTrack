@@ -2,17 +2,12 @@
 __pycache__/
 *.sqlite3
 .venv/
-dist/
+env/
 .env/
+dist/
 db.sqlite3
 *.py[cod]
 
-# Node / Vue
-node_modules/
-dist/
-build/
-coverage/
-.vite/
 # Environment files
 .env.*
 !.env.example
@@ -24,5 +19,3 @@ coverage/
 # OS
 .DS_Store
 Thumbs.db
-
-#project progress
