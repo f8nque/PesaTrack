@@ -1,4 +1,4 @@
-# Tally roadmap
+# Pesa Track roadmap
 
 Rules: transfers are never expenses. Budget (plan) and actual are stored separately. Every transaction has `transaction_date` and `created_at`.
 

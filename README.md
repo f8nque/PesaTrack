@@ -1,4 +1,4 @@
-# Tally: budgeting app (Django)
+# Pesa Track: budgeting app (Django)
 
 ## Running the App
     python -m venv env && source env/bin/activate
