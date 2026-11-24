@@ -623,6 +623,11 @@ def transactions_toggle(request, pk):
                     f'on {tx.transaction_date} already exists.'
                 )
                 return _safe_redirect(request, 'today')
+        if tx.debt:
+            err = _validate_debt_repayment_amount(tx.debt, tx.amount)
+            if err:
+                messages.error(request, f'Cannot activate: {err}')
+                return _safe_redirect(request, 'today')
         tx.is_active = True
         tx.save(update_fields=['is_active'])
         messages.success(request, f'TX-{tx.id} activated.')
@@ -1141,6 +1146,7 @@ def _render_debts(request, default_tab='credits'):
         paid = Decimal(d.total_paid or 0)
         bal = Decimal(d.balance or 0)
         d.paid_amount = paid
+        d.remaining_str = f"{bal:.2f}"
         d.is_overdue = bool(d.service_date and bal > 0 and d.service_date < today)
         if d.principal and d.principal > 0:
             pct = float(paid / d.principal) * 100
@@ -1152,6 +1158,8 @@ def _render_debts(request, default_tab='credits'):
         total_outstanding += bal
         if bal > 0:
             active_credits_count += 1
+
+    unpaid_debts = [d for d in debts if d.balance > 0]
 
     debtor_accounts = list(
         Account.objects.filter(user=request.user, kind='debtors', is_archived=False)
@@ -1202,6 +1210,7 @@ def _render_debts(request, default_tab='credits'):
         'current_tab': tab,
         'today_iso': today.isoformat(),
         'debts': debts,
+        'unpaid_debts': unpaid_debts,
         'debtor_accounts': debtor_accounts,
         'active_accounts': active_accounts,
         'default_account': default_account,
@@ -1343,6 +1352,19 @@ def debts_add(request):
     return redirect('debts')
 
 
+def _validate_debt_repayment_amount(debt, amount):
+    """Return an error string if amount cannot be applied to debt's remaining balance, else None."""
+    remaining = Decimal(debt.balance or 0)
+    if remaining <= 0:
+        return f'"{debt.name}" is already settled.'
+    if amount > remaining:
+        return (
+            f'Repayment amount ({amount:.2f}) cannot exceed the remaining balance '
+            f'({remaining:.2f}) for "{debt.name}".'
+        )
+    return None
+
+
 def _record_debt_repayment(request, debt_id):
     debt = get_object_or_404(Debt, pk=debt_id, user=request.user)
     acct_id = request.POST.get('account')
@@ -1355,6 +1377,11 @@ def _record_debt_repayment(request, debt_id):
         amount = _parse_decimal(request.POST.get('amount'), 'repayment amount')
     except ValueError as exc:
         messages.error(request, str(exc))
+        return _safe_redirect(request, 'debts')
+
+    err = _validate_debt_repayment_amount(debt, amount)
+    if err:
+        messages.error(request, err)
         return _safe_redirect(request, 'debts')
 
     Transaction.objects.create(

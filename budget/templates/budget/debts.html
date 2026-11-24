@@ -219,7 +219,7 @@
             </div>
 
             <div class="between" style="flex-wrap: wrap; gap: 0.65rem; align-items: center;">
-              {% if active_accounts %}
+              {% if active_accounts and d.balance > 0 %}
                 <form method="post" action="{% url 'debts_repay' d.id %}" class="row" style="flex: 1; margin: 0;">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'debts' %}">
@@ -236,11 +236,14 @@
                     type="number"
                     step="0.01"
                     min="0.01"
-                    placeholder="Repayment amount"
+                    max="{{ d.remaining_str }}"
+                    placeholder="Repayment amount (max {{ d.remaining_str }})"
                     required
                   >
                   <button type="submit" class="btn-orange-pill" style="padding: 0.45rem 1rem; font-size: 0.84rem;">Record Payment</button>
                 </form>
+              {% elif d.balance <= 0 %}
+                <span class="muted" style="font-size: 0.84rem;">✅ Account settled — no remaining balance</span>
               {% endif %}
 
               <div class="row-actions">
@@ -280,8 +283,10 @@
         <p class="muted">No credits registered yet. <a href="{% url 'debts' %}" style="color: var(--accent-orange);">Register a credit first</a>.</p>
       {% elif not active_accounts %}
         <p class="muted">Add a payment account in <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts</a> first.</p>
+      {% elif not unpaid_debts %}
+        <p class="muted">All registered credits are settled. No remaining balance to repay.</p>
       {% else %}
-        <form method="post" action="{% url 'debts_repay_form' %}" class="debt-form-grid">
+        <form method="post" action="{% url 'debts_repay_form' %}" id="repayment-form" class="debt-form-grid">
           {% csrf_token %}
           <input type="hidden" name="next" value="{% url 'debts_payments' %}">
 
@@ -290,8 +295,12 @@
               <label class="form-label" for="pay-debt">Credit / Debtor *</label>
               <select name="debt" id="pay-debt" class="form-select" required>
                 <option value="">-- Select credit --</option>
-                {% for d in debts %}
-                  <option value="{{ d.id }}" {% if preselect_debt_id == d.id %}selected{% endif %}>
+                {% for d in unpaid_debts %}
+                  <option
+                    value="{{ d.id }}"
+                    data-remaining="{{ d.remaining_str }}"
+                    {% if preselect_debt_id == d.id %}selected{% endif %}
+                  >
                     {% if d.account %}{{ d.account.name }} — {% endif %}{{ d.name }} (Left: {{ d.balance|money }})
                   </option>
                 {% endfor %}
@@ -312,6 +321,7 @@
             <div class="form-group">
               <label class="form-label" for="pay-amount">Repayment Amount *</label>
               <input type="number" name="amount" id="pay-amount" class="form-input" step="0.01" min="0.01" placeholder="0.00" required>
+              <div id="pay-amount-hint" class="form-hint"></div>
             </div>
           </div>
 
@@ -673,5 +683,46 @@
     var statusEl = document.getElementById('debtor-check-status');
     if (statusEl) statusEl.textContent = '';
   };
+
+  (function () {
+    var payDebtSelect = document.getElementById('pay-debt');
+    var payAmountInput = document.getElementById('pay-amount');
+    var payAmountHint = document.getElementById('pay-amount-hint');
+
+    function syncRemainingLimit() {
+      if (!payDebtSelect || !payAmountInput) return;
+      var opt = payDebtSelect.options[payDebtSelect.selectedIndex];
+      var rem = opt && opt.dataset ? opt.dataset.remaining : '';
+      if (rem) {
+        payAmountInput.max = rem;
+        if (payAmountHint) {
+          payAmountHint.textContent = 'Max remaining: ' + rem;
+        }
+      } else {
+        payAmountInput.removeAttribute('max');
+        if (payAmountHint) {
+          payAmountHint.textContent = '';
+        }
+      }
+      validatePayAmount();
+    }
+
+    function validatePayAmount() {
+      if (!payAmountInput) return;
+      var maxVal = parseFloat(payAmountInput.max);
+      var curVal = parseFloat(payAmountInput.value);
+      if (!isNaN(maxVal) && !isNaN(curVal) && curVal > maxVal) {
+        payAmountInput.setCustomValidity('Repayment amount cannot exceed the remaining balance (' + payAmountInput.max + ').');
+      } else {
+        payAmountInput.setCustomValidity('');
+      }
+    }
+
+    if (payDebtSelect && payAmountInput) {
+      payDebtSelect.addEventListener('change', syncRemainingLimit);
+      payAmountInput.addEventListener('input', validatePayAmount);
+      syncRemainingLimit();
+    }
+  })();
 </script>
 {% endblock %}

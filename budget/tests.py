@@ -722,3 +722,113 @@ class DebtSectionTests(TestCase):
         analysis_2025 = compute_debt_analysis(self.user, year=2025)
         self.assertEqual(analysis_2025['grand_year_taken'], 50000.0)
         self.assertEqual(analysis_2025['grand_year_paid'], 0.0)
+
+    def test_repayment_cannot_exceed_remaining_and_settled_hidden_from_payment_dropdown(self):
+        bank = Account.objects.create(
+            user=self.user, name='Equity Bank', kind='bank', opening_balance=Decimal('100000.00')
+        )
+        debt_a = Debt.objects.create(
+            user=self.user, name='Settled Loan', principal=Decimal('10000.00'), registration_date=self.today
+        )
+        debt_b = Debt.objects.create(
+            user=self.user, name='Active Loan', principal=Decimal('15000.00'), registration_date=self.today
+        )
+
+        # Partial payment of 4,000 on debt_a -> 6,000 remaining
+        self.client.post(f'/debts/{debt_a.id}/repay/', {
+            'account': bank.id,
+            'amount': '4000.00',
+            'transaction_date': str(self.today),
+        })
+        self.assertEqual(debt_a.balance, Decimal('6000.00'))
+
+        # Overpayment via inline endpoint is rejected
+        res_over_inline = self.client.post(f'/debts/{debt_a.id}/repay/', {
+            'account': bank.id,
+            'amount': '6000.01',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_over_inline, 'cannot exceed the remaining balance')
+        self.assertEqual(debt_a.balance, Decimal('6000.00'))
+
+        # Overpayment via Payments tab endpoint is rejected
+        res_over_form = self.client.post('/debts/repay/', {
+            'debt': debt_a.id,
+            'account': bank.id,
+            'amount': '7000.00',
+            'transaction_date': str(self.today),
+            'next': '/debts/payments/',
+        }, follow=True)
+        self.assertContains(res_over_form, 'cannot exceed the remaining balance')
+        self.assertEqual(debt_a.balance, Decimal('6000.00'))
+
+        # Pay exact remaining 6,000.00 -> debt_a is now settled
+        self.client.post('/debts/repay/', {
+            'debt': debt_a.id,
+            'account': bank.id,
+            'amount': '6000.00',
+            'transaction_date': str(self.today),
+            'next': '/debts/payments/',
+        })
+        self.assertEqual(debt_a.balance, Decimal('0.00'))
+
+        # Further payment on settled debt is rejected
+        res_settled = self.client.post(f'/debts/{debt_a.id}/repay/', {
+            'account': bank.id,
+            'amount': '100.00',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_settled, 'already settled')
+        self.assertEqual(debt_a.balance, Decimal('0.00'))
+
+        # Payments page dropdown (#pay-debt) excludes settled debt_a, includes active debt_b
+        res_payments = self.client.get('/debts/payments/')
+        self.assertEqual(res_payments.status_code, 200)
+        self.assertEqual([d.id for d in res_payments.context['unpaid_debts']], [debt_b.id])
+        html = res_payments.content.decode('utf-8')
+        pay_select_section = html.split('id="pay-debt"')[1].split('</select>')[0]
+        self.assertNotIn(f'value="{debt_a.id}"', pay_select_section)
+        self.assertIn(f'value="{debt_b.id}"', pay_select_section)
+
+        # Credits tab hides inline payment form for settled debt_a, keeps it for active debt_b
+        res_credits = self.client.get('/debts/')
+        self.assertEqual(res_credits.status_code, 200)
+        credits_html = res_credits.content.decode('utf-8')
+        self.assertNotIn(f'/debts/{debt_a.id}/repay/', credits_html)
+        self.assertIn(f'/debts/{debt_b.id}/repay/', credits_html)
+
+        # Voiding & restoring a repayment cannot overpay a debt
+        tx_first = Transaction.objects.filter(debt=debt_b).first()
+        self.assertIsNone(tx_first)
+        self.client.post('/debts/repay/', {
+            'debt': debt_b.id,
+            'account': bank.id,
+            'amount': '8000.00',
+            'transaction_date': str(self.today),
+        })
+        tx_8k = Transaction.objects.get(debt=debt_b, amount=Decimal('8000.00'))
+        self.client.post(f'/transactions/{tx_8k.id}/toggle/')  # void 8,000
+        self.client.post('/debts/repay/', {
+            'debt': debt_b.id,
+            'account': bank.id,
+            'amount': '10000.00',
+            'transaction_date': str(self.today),
+        })
+        res_restore = self.client.post(f'/transactions/{tx_8k.id}/toggle/', {
+            'next': '/debts/payments/',
+        }, follow=True)
+        self.assertContains(res_restore, 'cannot exceed the remaining balance')
+        tx_8k.refresh_from_db()
+        self.assertFalse(tx_8k.is_active)
+        self.assertEqual(debt_b.balance, Decimal('5000.00'))
+
+        # When all debts are settled, payment dropdown is not shown
+        self.client.post('/debts/repay/', {
+            'debt': debt_b.id,
+            'account': bank.id,
+            'amount': '5000.00',
+            'transaction_date': str(self.today),
+        })
+        res_all_settled = self.client.get('/debts/payments/')
+        self.assertContains(res_all_settled, 'All registered credits are settled')
+        self.assertNotIn('id="pay-debt"', res_all_settled.content.decode('utf-8'))
