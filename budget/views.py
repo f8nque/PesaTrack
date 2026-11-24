@@ -156,7 +156,10 @@ def today_view(request):
         .exclude(kind='debtors')
         .order_by('-is_default', 'name')
     )
-    default_account = next((a for a in active_accounts if a.is_default), active_accounts[0] if active_accounts else None)
+    for a in active_accounts:
+        a.balance_str = f"{Decimal(a.balance or 0):.2f}"
+    funded_accounts = [a for a in active_accounts if Decimal(a.balance or 0) > 0]
+    default_account = next((a for a in funded_accounts if a.is_default), funded_accounts[0] if funded_accounts else None)
 
     search_query = (request.GET.get('q') or '').strip()
     selected_cat_raw = (request.GET.get('category') or '').strip()
@@ -200,6 +203,17 @@ def today_view(request):
             'cat_id': row['spent_category_id'],
         })
 
+    accounts_meta = {
+        a.id: {
+            'id': a.id,
+            'name': a.name,
+            'balance': float(a.balance or 0),
+            'balance_str': a.balance_str,
+            'display': f"{a.name} ({Decimal(a.balance or 0):,.2f})",
+        }
+        for a in active_accounts
+    }
+
     ctx = {
         **_base_context('today'),
         'today': today,
@@ -208,6 +222,7 @@ def today_view(request):
         'categories': categories,
         'active_categories': active_categories,
         'active_accounts': active_accounts,
+        'funded_accounts': funded_accounts,
         'default_account': default_account,
         'search_query': search_query,
         'selected_cat_id': selected_cat_id,
@@ -219,6 +234,7 @@ def today_view(request):
         },
         'today_total': today_total,
         'recorded_map_json': json.dumps(recorded_map),
+        'accounts_json': json.dumps(accounts_meta),
     }
     return render(request, 'budget/today.html', ctx)
 
@@ -254,6 +270,13 @@ def today_save(request):
         instance = get_object_or_404(Transaction, pk=tx_id, user=request.user)
     else:
         is_active = True
+
+    # Enforce sufficient account balance when recording/keeping an active spend
+    if is_active:
+        bal_err = _validate_account_balance(account, amount, existing_tx=instance)
+        if bal_err:
+            messages.error(request, bal_err)
+            return redirect('today')
 
     # Enforce one active entry per category and date
     if spent_category and is_active:
@@ -583,6 +606,11 @@ def transactions_add(request):
 
     if kind == 'income':
         fee = Decimal('0')
+    elif kind in ('expense', 'transfer'):
+        bal_err = _validate_account_balance(account, amount + fee)
+        if bal_err:
+            messages.error(request, bal_err)
+            return redirect('transactions')
 
     Transaction.objects.create(
         user=request.user,
@@ -627,6 +655,11 @@ def transactions_toggle(request, pk):
             err = _validate_debt_repayment_amount(tx.debt, tx.amount)
             if err:
                 messages.error(request, f'Cannot activate: {err}')
+                return _safe_redirect(request, 'today')
+        if tx.kind in ('expense', 'transfer') and tx.account:
+            bal_err = _validate_account_balance(tx.account, Decimal(tx.amount or 0) + Decimal(tx.fee or 0))
+            if bal_err:
+                messages.error(request, f'Cannot activate: {bal_err}')
                 return _safe_redirect(request, 'today')
         tx.is_active = True
         tx.save(update_fields=['is_active'])
@@ -674,6 +707,7 @@ def accounts_view(request):
     ]
 
     non_debtor_active = [a for a in active_accounts if a.kind != 'debtors']
+    funded_accounts = [a for a in non_debtor_active if Decimal(a.balance or 0) > 0]
     total_net_worth = sum((a.balance for a in non_debtor_active), Decimal('0'))
     total_liquid = sum((a.balance for a in non_debtor_active if not a.is_pot), Decimal('0'))
     total_pots = sum((a.balance for a in non_debtor_active if a.is_pot), Decimal('0'))
@@ -719,6 +753,7 @@ def accounts_view(request):
         **_base_context('accounts'),
         'today_iso': today.isoformat(),
         'active_accounts': active_accounts,
+        'funded_accounts': funded_accounts,
         'archived_accounts': archived_accounts,
         'top_level_active': top_level_active,
         'standalone_pots': standalone_pots,
@@ -831,6 +866,11 @@ def accounts_transfer(request):
         fee = _parse_decimal(fee_raw, 'fee', allow_zero=True) if fee_raw else Decimal('0')
     except ValueError as exc:
         messages.error(request, str(exc))
+        return redirect('accounts')
+
+    bal_err = _validate_account_balance(from_acct, amount + fee)
+    if bal_err:
+        messages.error(request, bal_err)
         return redirect('accounts')
 
     Transaction.objects.create(
@@ -1170,7 +1210,10 @@ def _render_debts(request, default_tab='credits'):
         .exclude(kind='debtors')
         .order_by('-is_default', 'name')
     )
-    default_account = next((a for a in active_accounts if a.is_default), active_accounts[0] if active_accounts else None)
+    for a in active_accounts:
+        a.balance_str = f"{Decimal(a.balance or 0):.2f}"
+    funded_accounts = [a for a in active_accounts if Decimal(a.balance or 0) > 0]
+    default_account = next((a for a in funded_accounts if a.is_default), funded_accounts[0] if funded_accounts else None)
 
     # Payments tab filtering
     filter_debt_raw = (request.GET.get('debt') or '').strip()
@@ -1213,6 +1256,7 @@ def _render_debts(request, default_tab='credits'):
         'unpaid_debts': unpaid_debts,
         'debtor_accounts': debtor_accounts,
         'active_accounts': active_accounts,
+        'payable_accounts': funded_accounts,
         'default_account': default_account,
         'total_borrowed': total_borrowed,
         'total_repaid': total_repaid,
@@ -1352,6 +1396,23 @@ def debts_add(request):
     return redirect('debts')
 
 
+def _validate_account_balance(account, amount, existing_tx=None):
+    """Return an error string if account lacks sufficient balance for amount, else None."""
+    if not account:
+        return 'Please select a valid payment account.'
+    available = Decimal(account.balance or 0)
+    if existing_tx and existing_tx.is_active and existing_tx.account_id == account.id:
+        available += Decimal(existing_tx.amount or 0) + Decimal(existing_tx.fee or 0)
+    if available <= 0:
+        return f'Insufficient balance in "{account.name}" (available: {available:.2f}).'
+    if amount > available:
+        return (
+            f'Amount ({amount:.2f}) exceeds available balance ({available:.2f}) '
+            f'in "{account.name}".'
+        )
+    return None
+
+
 def _validate_debt_repayment_amount(debt, amount):
     """Return an error string if amount cannot be applied to debt's remaining balance, else None."""
     remaining = Decimal(debt.balance or 0)
@@ -1382,6 +1443,11 @@ def _record_debt_repayment(request, debt_id):
     err = _validate_debt_repayment_amount(debt, amount)
     if err:
         messages.error(request, err)
+        return _safe_redirect(request, 'debts')
+
+    bal_err = _validate_account_balance(account, amount)
+    if bal_err:
+        messages.error(request, bal_err)
         return _safe_redirect(request, 'debts')
 
     Transaction.objects.create(

@@ -59,6 +59,9 @@ class BudgetArchitectureTests(TestCase):
             self.assertIn('UPKEEP > Shopping', scat.full_path)
 
     def test_budget_creation_and_computed_values(self):
+        Account.objects.create(
+            user=self.user, name='Cash', kind='cash', opening_balance=Decimal('50000.00'), is_default=True
+        )
         group = BudgetGroupCategory.objects.create(user=self.user, name='UPKEEP', priority=1)
         bcat = BudgetCategory.objects.create(user=self.user, grouping=group, name='Shopping', category_type='needs')
         scat = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='MEAT')
@@ -149,6 +152,9 @@ class BudgetArchitectureTests(TestCase):
         self.assertEqual(res_overlap.context['current_budget'].id, overlap_b.id)
 
     def test_restrict_one_entry_per_category_and_date(self):
+        Account.objects.create(
+            user=self.user, name='Cash', kind='cash', opening_balance=Decimal('10000.00'), is_default=True
+        )
         group = BudgetGroupCategory.objects.create(user=self.user, name='UPKEEP', priority=1)
         bcat = BudgetCategory.objects.create(user=self.user, grouping=group, name='Shopping', category_type='needs')
         scat1 = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='MEAT')
@@ -832,3 +838,244 @@ class DebtSectionTests(TestCase):
         res_all_settled = self.client.get('/debts/payments/')
         self.assertContains(res_all_settled, 'All registered credits are settled')
         self.assertNotIn('id="pay-debt"', res_all_settled.content.decode('utf-8'))
+
+    def test_add_spend_and_edit_spend_insufficient_balance_and_dropdown(self):
+        empty_acct = Account.objects.create(
+            user=self.user, name='Empty Wallet', kind='cash', opening_balance=Decimal('0.00')
+        )
+        funded_acct = Account.objects.create(
+            user=self.user, name='M-Pesa Spend', kind='mpesa', opening_balance=Decimal('1000.00'), is_default=True
+        )
+        group = BudgetGroupCategory.objects.create(user=self.user, name='LIVING', priority=1)
+        bcat = BudgetCategory.objects.create(user=self.user, grouping=group, name='Food', category_type='needs')
+        scat = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='Lunch')
+
+        # 0-balance account is excluded from Add Spend dropdown (#spend-account)
+        res_today = self.client.get('/')
+        self.assertEqual(res_today.status_code, 200)
+        today_html = res_today.content.decode('utf-8')
+        spend_select = today_html.split('id="spend-account"')[1].split('</select>')[0]
+        self.assertNotIn(f'value="{empty_acct.id}"', spend_select)
+        self.assertIn(f'value="{funded_acct.id}"', spend_select)
+
+        # Cannot spend from 0-balance account
+        res_empty = self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': empty_acct.id,
+            'category': scat.id,
+            'amount': '50.00',
+            'narrative': 'Fail empty',
+        }, follow=True)
+        self.assertContains(res_empty, 'Insufficient balance')
+        self.assertEqual(Transaction.objects.filter(user=self.user).count(), 0)
+
+        # Cannot spend more than available balance in funded_acct
+        res_over = self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': funded_acct.id,
+            'category': scat.id,
+            'amount': '1000.01',
+            'narrative': 'Fail over',
+        }, follow=True)
+        self.assertContains(res_over, 'exceeds available balance')
+        self.assertEqual(Transaction.objects.filter(user=self.user).count(), 0)
+
+        # Spend exact balance (1,000.00) -> succeeds, balance becomes 0
+        self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': funded_acct.id,
+            'category': scat.id,
+            'amount': '1000.00',
+            'narrative': 'Full lunch',
+        })
+        self.assertEqual(funded_acct.balance, Decimal('0.00'))
+        tx = Transaction.objects.get(user=self.user, description='Full lunch')
+
+        # Now funded_acct has 0 balance, so it is excluded from Add Spend dropdown
+        res_after = self.client.get('/')
+        self.assertEqual([a.id for a in res_after.context['funded_accounts']], [])
+
+        # Editing the existing active spend on the same account to 800.00 succeeds (effective available = 0 + 1000)
+        res_edit_ok = self.client.post('/today/save/', {
+            'id': tx.id,
+            'date': str(self.today),
+            'account': funded_acct.id,
+            'category': scat.id,
+            'amount': '800.00',
+            'narrative': 'Full lunch',
+            'is_active': 'on',
+        }, follow=True)
+        self.assertContains(res_edit_ok, 'updated')
+        self.assertEqual(funded_acct.balance, Decimal('200.00'))
+
+        # Editing to 1200.00 fails (effective available = 200 + 800 = 1000)
+        res_edit_fail = self.client.post('/today/save/', {
+            'id': tx.id,
+            'date': str(self.today),
+            'account': funded_acct.id,
+            'category': scat.id,
+            'amount': '1200.00',
+            'narrative': 'Full lunch',
+            'is_active': 'on',
+        }, follow=True)
+        self.assertContains(res_edit_fail, 'exceeds available balance')
+        tx.refresh_from_db()
+        self.assertEqual(tx.amount, Decimal('800.00'))
+
+        # Deactivating restores balance; spending elsewhere then reactivating fails if insufficient
+        self.client.post(f'/transactions/{tx.id}/toggle/')
+        self.assertEqual(funded_acct.balance, Decimal('1000.00'))
+        scat2 = SpentCategory.objects.create(user=self.user, budget_category=bcat, name='Dinner')
+        self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': funded_acct.id,
+            'category': scat2.id,
+            'amount': '500.00',
+            'narrative': 'Dinner',
+        })
+        res_reactivate = self.client.post(f'/transactions/{tx.id}/toggle/', follow=True)
+        self.assertContains(res_reactivate, 'exceeds available balance')
+        tx.refresh_from_db()
+        self.assertFalse(tx.is_active)
+
+    def test_debt_payment_insufficient_balance_and_account_dropdown(self):
+        empty_acct = Account.objects.create(
+            user=self.user, name='Empty Bank', kind='bank', opening_balance=Decimal('0.00')
+        )
+        small_acct = Account.objects.create(
+            user=self.user, name='Small Wallet', kind='mpesa', opening_balance=Decimal('3000.00')
+        )
+        debt = Debt.objects.create(
+            user=self.user, name='Big Loan', principal=Decimal('10000.00'), registration_date=self.today
+        )
+
+        # Empty account is excluded from payment account dropdowns in both Payments and Credits tabs
+        res_pay = self.client.get('/debts/payments/')
+        pay_html = res_pay.content.decode('utf-8')
+        acct_select = pay_html.split('id="pay-account"')[1].split('</select>')[0]
+        self.assertNotIn(f'value="{empty_acct.id}"', acct_select)
+        self.assertIn(f'value="{small_acct.id}"', acct_select)
+
+        res_credits = self.client.get('/debts/')
+        credits_html = res_credits.content.decode('utf-8')
+        self.assertNotIn(f'Pay from {empty_acct.name}', credits_html)
+        self.assertIn(f'Pay from {small_acct.name}', credits_html)
+
+        # Cannot pay using empty account
+        res_empty = self.client.post('/debts/repay/', {
+            'debt': debt.id,
+            'account': empty_acct.id,
+            'amount': '500.00',
+            'transaction_date': str(self.today),
+            'next': '/debts/payments/',
+        }, follow=True)
+        self.assertContains(res_empty, 'Insufficient balance')
+        self.assertEqual(debt.balance, Decimal('10000.00'))
+
+        # Cannot pay more than small_acct's balance (even though debt remaining is 10,000)
+        res_over = self.client.post(f'/debts/{debt.id}/repay/', {
+            'account': small_acct.id,
+            'amount': '4000.00',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_over, 'exceeds available balance')
+        self.assertEqual(debt.balance, Decimal('10000.00'))
+
+        # Paying small_acct's full 3,000 succeeds and removes small_acct from payable_accounts
+        self.client.post('/debts/repay/', {
+            'debt': debt.id,
+            'account': small_acct.id,
+            'amount': '3000.00',
+            'transaction_date': str(self.today),
+            'next': '/debts/payments/',
+        })
+        self.assertEqual(small_acct.balance, Decimal('0.00'))
+        self.assertEqual(debt.balance, Decimal('7000.00'))
+        res_pay_after = self.client.get('/debts/payments/')
+        self.assertContains(res_pay_after, 'No accounts with available balance')
+        self.assertNotIn('id="pay-account"', res_pay_after.content.decode('utf-8'))
+
+    def test_transfer_insufficient_balance_and_dropdown(self):
+        empty_acct = Account.objects.create(
+            user=self.user, name='Empty Savings', kind='bank', opening_balance=Decimal('0.00')
+        )
+        funded_acct = Account.objects.create(
+            user=self.user, name='M-Pesa Main', kind='mpesa', opening_balance=Decimal('1000.00'), is_default=True
+        )
+        dest_acct = Account.objects.create(
+            user=self.user, name='Target Pot', kind='bank', opening_balance=Decimal('0.00'), is_pot=True
+        )
+
+        # 0-balance account is excluded from Transfer From dropdown (#xfer-from),
+        # while still allowed in Transfer To dropdown (#xfer-to)
+        res_accts = self.client.get('/accounts/')
+        self.assertEqual(res_accts.status_code, 200)
+        accts_html = res_accts.content.decode('utf-8')
+        xfer_from_select = accts_html.split('id="xfer-from"')[1].split('</select>')[0]
+        xfer_to_select = accts_html.split('id="xfer-to"')[1].split('</select>')[0]
+        self.assertNotIn(f'value="{empty_acct.id}"', xfer_from_select)
+        self.assertIn(f'value="{funded_acct.id}"', xfer_from_select)
+        self.assertIn(f'value="{empty_acct.id}"', xfer_to_select)
+        self.assertIn(f'value="{dest_acct.id}"', xfer_to_select)
+
+        # Cannot transfer from 0-balance account via /accounts/transfer/
+        res_empty = self.client.post('/accounts/transfer/', {
+            'from_account': empty_acct.id,
+            'to_account': dest_acct.id,
+            'amount': '100.00',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_empty, 'Insufficient balance')
+        self.assertEqual(Transaction.objects.filter(user=self.user, kind='transfer').count(), 0)
+
+        # Cannot transfer when amount + fee exceeds available balance
+        res_over_with_fee = self.client.post('/accounts/transfer/', {
+            'from_account': funded_acct.id,
+            'to_account': dest_acct.id,
+            'amount': '990.00',
+            'fee': '20.00',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_over_with_fee, 'exceeds available balance')
+        self.assertEqual(funded_acct.balance, Decimal('1000.00'))
+        self.assertEqual(dest_acct.balance, Decimal('0.00'))
+
+        # Cannot transfer over balance via /transactions/add/ with kind=transfer
+        res_tx_over = self.client.post('/transactions/add/', {
+            'kind': 'transfer',
+            'account': funded_acct.id,
+            'to_account': dest_acct.id,
+            'amount': '1000.01',
+            'fee': '0',
+            'transaction_date': str(self.today),
+        }, follow=True)
+        self.assertContains(res_tx_over, 'exceeds available balance')
+        self.assertEqual(Transaction.objects.filter(user=self.user, kind='transfer').count(), 0)
+
+        # Transfer exact balance including fee (975 + 25 = 1000) succeeds
+        res_ok = self.client.post('/accounts/transfer/', {
+            'from_account': funded_acct.id,
+            'to_account': dest_acct.id,
+            'amount': '975.00',
+            'fee': '25.00',
+            'transaction_date': str(self.today),
+            'narrative': 'Full move',
+        }, follow=True)
+        self.assertContains(res_ok, 'Transferred')
+        self.assertEqual(funded_acct.balance, Decimal('0.00'))
+        self.assertEqual(dest_acct.balance, Decimal('975.00'))
+
+        # Deactivating the transfer restores source balance; spending elsewhere then reactivating fails
+        xfer_tx = Transaction.objects.get(user=self.user, kind='transfer', description='Full move')
+        self.client.post(f'/transactions/{xfer_tx.id}/toggle/')
+        self.assertEqual(funded_acct.balance, Decimal('1000.00'))
+        self.client.post('/transactions/add/', {
+            'kind': 'expense',
+            'account': funded_acct.id,
+            'amount': '200.00',
+            'transaction_date': str(self.today),
+        })
+        res_reactivate = self.client.post(f'/transactions/{xfer_tx.id}/toggle/', follow=True)
+        self.assertContains(res_reactivate, 'exceeds available balance')
+        xfer_tx.refresh_from_db()
+        self.assertFalse(xfer_tx.is_active)

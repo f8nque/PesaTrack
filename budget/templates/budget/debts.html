@@ -175,8 +175,8 @@
         <p class="muted">Use the Credit Registration Form above to register a loan or credit.</p>
       </div>
     {% else %}
-      {% if not active_accounts %}
-        <p class="muted">Add a payment account in <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts</a> first so repayments can be deducted from an account.</p>
+      {% if not payable_accounts %}
+        <p class="muted">Ensure a payment account in <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts</a> has an available balance so repayments can be recorded.</p>
       {% endif %}
 
       <div class="debt-list">
@@ -219,14 +219,14 @@
             </div>
 
             <div class="between" style="flex-wrap: wrap; gap: 0.65rem; align-items: center;">
-              {% if active_accounts and d.balance > 0 %}
-                <form method="post" action="{% url 'debts_repay' d.id %}" class="row" style="flex: 1; margin: 0;">
+              {% if payable_accounts and d.balance > 0 %}
+                <form method="post" action="{% url 'debts_repay' d.id %}" class="row debt-repay-inline-form" data-debt-remaining="{{ d.remaining_str }}" style="flex: 1; margin: 0;">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{% url 'debts' %}">
                   <select name="account" required>
-                    {% for a in active_accounts %}
-                      <option value="{{ a.id }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
-                        Pay from {{ a.name }}
+                    {% for a in payable_accounts %}
+                      <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
+                        Pay from {{ a.name }} ({{ a.balance|money }})
                       </option>
                     {% endfor %}
                   </select>
@@ -244,6 +244,8 @@
                 </form>
               {% elif d.balance <= 0 %}
                 <span class="muted" style="font-size: 0.84rem;">✅ Account settled — no remaining balance</span>
+              {% else %}
+                <span class="muted" style="font-size: 0.84rem;">⚠️ No account with available balance to pay from</span>
               {% endif %}
 
               <div class="row-actions">
@@ -281,8 +283,8 @@
       <h2 style="margin-top: 0;">Record Repayment Transaction</h2>
       {% if not debts %}
         <p class="muted">No credits registered yet. <a href="{% url 'debts' %}" style="color: var(--accent-orange);">Register a credit first</a>.</p>
-      {% elif not active_accounts %}
-        <p class="muted">Add a payment account in <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts</a> first.</p>
+      {% elif not payable_accounts %}
+        <p class="muted">No accounts with available balance. <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Add funds to an account</a> first.</p>
       {% elif not unpaid_debts %}
         <p class="muted">All registered credits are settled. No remaining balance to repay.</p>
       {% else %}
@@ -310,8 +312,8 @@
             <div class="form-group">
               <label class="form-label" for="pay-account">Pay From Account *</label>
               <select name="account" id="pay-account" class="form-select" required>
-                {% for a in active_accounts %}
-                  <option value="{{ a.id }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
+                {% for a in payable_accounts %}
+                  <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
                     {{ a.name }} ({{ a.balance|money }})
                   </option>
                 {% endfor %}
@@ -686,17 +688,33 @@
 
   (function () {
     var payDebtSelect = document.getElementById('pay-debt');
+    var payAccountSelect = document.getElementById('pay-account');
     var payAmountInput = document.getElementById('pay-amount');
     var payAmountHint = document.getElementById('pay-amount-hint');
 
+    function getSelectedNumericAttr(selectEl, attr) {
+      if (!selectEl) return null;
+      var opt = selectEl.options[selectEl.selectedIndex];
+      var raw = opt && opt.dataset ? opt.dataset[attr] : '';
+      if (!raw) return null;
+      var val = parseFloat(raw);
+      return isNaN(val) ? null : val;
+    }
+
     function syncRemainingLimit() {
       if (!payDebtSelect || !payAmountInput) return;
-      var opt = payDebtSelect.options[payDebtSelect.selectedIndex];
-      var rem = opt && opt.dataset ? opt.dataset.remaining : '';
-      if (rem) {
-        payAmountInput.max = rem;
+      var debtRem = getSelectedNumericAttr(payDebtSelect, 'remaining');
+      var acctBal = getSelectedNumericAttr(payAccountSelect, 'balance');
+      var limits = [debtRem, acctBal].filter(function (v) { return v !== null; });
+
+      if (limits.length > 0) {
+        var effMax = Math.max(0, Math.min.apply(null, limits));
+        payAmountInput.max = effMax.toFixed(2);
         if (payAmountHint) {
-          payAmountHint.textContent = 'Max remaining: ' + rem;
+          var parts = [];
+          if (debtRem !== null) parts.push('Debt remaining: ' + debtRem.toFixed(2));
+          if (acctBal !== null) parts.push('Account balance: ' + acctBal.toFixed(2));
+          payAmountHint.textContent = 'Max payable: ' + effMax.toFixed(2) + ' (' + parts.join(' • ') + ')';
         }
       } else {
         payAmountInput.removeAttribute('max');
@@ -709,10 +727,17 @@
 
     function validatePayAmount() {
       if (!payAmountInput) return;
-      var maxVal = parseFloat(payAmountInput.max);
       var curVal = parseFloat(payAmountInput.value);
-      if (!isNaN(maxVal) && !isNaN(curVal) && curVal > maxVal) {
-        payAmountInput.setCustomValidity('Repayment amount cannot exceed the remaining balance (' + payAmountInput.max + ').');
+      var debtRem = getSelectedNumericAttr(payDebtSelect, 'remaining');
+      var acctBal = getSelectedNumericAttr(payAccountSelect, 'balance');
+      if (isNaN(curVal)) {
+        payAmountInput.setCustomValidity('');
+        return;
+      }
+      if (acctBal !== null && curVal > acctBal && (debtRem === null || acctBal <= debtRem)) {
+        payAmountInput.setCustomValidity('Repayment amount cannot exceed the selected account balance (' + acctBal.toFixed(2) + ').');
+      } else if (debtRem !== null && curVal > debtRem) {
+        payAmountInput.setCustomValidity('Repayment amount cannot exceed the remaining balance (' + debtRem.toFixed(2) + ').');
       } else {
         payAmountInput.setCustomValidity('');
       }
@@ -720,9 +745,50 @@
 
     if (payDebtSelect && payAmountInput) {
       payDebtSelect.addEventListener('change', syncRemainingLimit);
+      if (payAccountSelect) payAccountSelect.addEventListener('change', syncRemainingLimit);
       payAmountInput.addEventListener('input', validatePayAmount);
       syncRemainingLimit();
     }
+
+    document.querySelectorAll('.debt-repay-inline-form').forEach(function (form) {
+      var acctSel = form.querySelector('select[name="account"]');
+      var amtInp = form.querySelector('input[name="amount"]');
+      var debtRem = parseFloat(form.dataset.debtRemaining || '');
+      if (!acctSel || !amtInp) return;
+
+      function syncInline() {
+        var acctBal = getSelectedNumericAttr(acctSel, 'balance');
+        var limits = [];
+        if (!isNaN(debtRem)) limits.push(debtRem);
+        if (acctBal !== null) limits.push(acctBal);
+        if (limits.length > 0) {
+          var effMax = Math.max(0, Math.min.apply(null, limits));
+          amtInp.max = effMax.toFixed(2);
+          amtInp.placeholder = 'Repayment amount (max ' + effMax.toFixed(2) + ')';
+        }
+        validateInline();
+      }
+
+      function validateInline() {
+        var curVal = parseFloat(amtInp.value);
+        var acctBal = getSelectedNumericAttr(acctSel, 'balance');
+        if (isNaN(curVal)) {
+          amtInp.setCustomValidity('');
+          return;
+        }
+        if (acctBal !== null && curVal > acctBal && (isNaN(debtRem) || acctBal <= debtRem)) {
+          amtInp.setCustomValidity('Repayment amount cannot exceed the selected account balance (' + acctBal.toFixed(2) + ').');
+        } else if (!isNaN(debtRem) && curVal > debtRem) {
+          amtInp.setCustomValidity('Repayment amount cannot exceed the remaining balance (' + debtRem.toFixed(2) + ').');
+        } else {
+          amtInp.setCustomValidity('');
+        }
+      }
+
+      acctSel.addEventListener('change', syncInline);
+      amtInp.addEventListener('input', validateInline);
+      syncInline();
+    });
   })();
 </script>
 {% endblock %}

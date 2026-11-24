@@ -173,7 +173,32 @@
     var fee = Number(feeEl.value || 0);
     var total = amt + fee;
 
-    if (acct && k !== 'income' && acct.minimum_balance > 0 && (acct.balance - total) < acct.minimum_balance && total > 0) {
+    if (k === 'transfer') {
+      Array.prototype.forEach.call(toAcctEl.options, function (opt) {
+        if (opt.value) opt.disabled = (opt.value === String(acctId));
+      });
+    }
+
+    if (acct && k !== 'income') {
+      var avail = Math.max(0, Number(acct.balance || 0));
+      var maxAmt = Math.max(0, avail - Math.max(0, fee));
+      amtEl.max = maxAmt.toFixed(2);
+      if (avail <= 0) {
+        amtEl.setCustomValidity('Insufficient balance in "' + acct.name + '" (' + avail.toFixed(2) + ').');
+      } else if (amt > 0 && total > avail) {
+        amtEl.setCustomValidity('Amount plus fee cannot exceed available balance (' + avail.toFixed(2) + ').');
+      } else {
+        amtEl.setCustomValidity('');
+      }
+    } else {
+      amtEl.removeAttribute('max');
+      amtEl.setCustomValidity('');
+    }
+
+    if (acct && k !== 'income' && total > 0 && total > acct.balance) {
+      lowBanner.textContent = '⚠️ Insufficient balance in ' + acct.name + ': ' + window.formatMoney(total) + ' exceeds available balance of ' + window.formatMoney(acct.balance) + '.';
+      lowBanner.classList.remove('hidden');
+    } else if (acct && k !== 'income' && acct.minimum_balance > 0 && (acct.balance - total) < acct.minimum_balance && total > 0) {
       lowBanner.textContent = '⚠️ Warning: This entry will drop ' + acct.name + ' below its minimum safety balance of ' + window.formatMoney(acct.minimum_balance) + '.';
       lowBanner.classList.remove('hidden');
     } else {

@@ -208,18 +208,19 @@
           <input id="spend-date" name="date" type="date" class="form-input" value="{{ today_iso }}" required />
         </div>
 
-        {% if active_accounts %}
-          <div class="form-group">
-            <label class="form-label" for="spend-account">Account</label>
-            <select id="spend-account" name="account" class="form-select">
-              {% for a in active_accounts %}
-                <option value="{{ a.id }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
-                  {{ a.name }} ({{ a.get_kind_display }}) {% if a.is_default %}⭐{% endif %}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-        {% endif %}
+        <div class="form-group">
+          <label class="form-label" for="spend-account">Account</label>
+          <select id="spend-account" name="account" class="form-select{% if not funded_accounts %} hidden{% endif %}"{% if funded_accounts %} required{% endif %}>
+            {% for a in funded_accounts %}
+              <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
+                {{ a.name }} ({{ a.balance|money }}) {% if a.is_default %}⭐{% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <p id="no-funded-accounts-msg" class="muted{% if funded_accounts %} hidden{% endif %}" style="margin: 0.25rem 0 0; font-size: 0.85rem;">
+            No accounts with available balance. <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Add funds to an account</a> first.
+          </p>
+        </div>
 
         <!-- Searchable Spent Category Picker -->
         <div class="form-group cat-picker-container" id="today-cat-picker">
@@ -294,6 +295,7 @@
         <div class="form-group">
           <label class="form-label" for="spend-amount">Amount *</label>
           <input id="spend-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
+          <div id="spend-amount-hint" class="form-hint"></div>
         </div>
 
         <div class="form-group">
@@ -322,11 +324,22 @@
 <script>
 (function () {
   var recordedMap = {{ recorded_map_json|safe }};
+  var accountsMeta = {{ accounts_json|safe }};
+  var hasFundedAccounts = {% if funded_accounts %}true{% else %}false{% endif %};
   var defaultAcctId = "{% if default_account %}{{ default_account.id }}{% endif %}";
   var todayIso = "{{ today_iso }}";
   var currentEditingTxId = null;
+  var currentEditingTxAmount = 0;
+  var currentEditingTxAccountId = '';
+  var currentEditingTxActive = false;
 
   var dateInput = document.getElementById('spend-date');
+  var acctSelect = document.getElementById('spend-account');
+  var noFundedMsg = document.getElementById('no-funded-accounts-msg');
+  var spendAmountInput = document.getElementById('spend-amount');
+  var spendAmountHint = document.getElementById('spend-amount-hint');
+  var spendIsActiveEl = document.getElementById('spend-is-active');
+  var spendSubmitBtn = document.getElementById('spend-submit-btn');
   var catInput = document.getElementById('spend-category-input');
   var catNameEl = document.getElementById('cat-picker-name');
   var catPathEl = document.getElementById('cat-picker-path');
@@ -428,14 +441,94 @@
     }
   });
 
+  function clearTempEditOption() {
+    if (!acctSelect) return;
+    acctSelect.querySelectorAll('option[data-temp-edit="1"]').forEach(function (opt) {
+      opt.remove();
+    });
+  }
+
+  function ensureEditAccountOption(acctId) {
+    if (!acctSelect || !acctId) return;
+    var exists = Array.prototype.some.call(acctSelect.options, function (opt) {
+      return String(opt.value) === String(acctId);
+    });
+    if (!exists && accountsMeta[acctId]) {
+      var opt = document.createElement('option');
+      opt.value = String(acctId);
+      opt.textContent = accountsMeta[acctId].display;
+      opt.dataset.balance = accountsMeta[acctId].balance_str;
+      opt.dataset.tempEdit = '1';
+      acctSelect.appendChild(opt);
+    }
+  }
+
+  function getEffectiveSpendLimit() {
+    if (!acctSelect) return null;
+    if (currentEditingTxId && spendIsActiveEl && !spendIsActiveEl.checked) {
+      return null;
+    }
+    var acctId = acctSelect.value;
+    var acct = accountsMeta[acctId];
+    if (!acct) return null;
+    var avail = Number(acct.balance || 0);
+    if (currentEditingTxId && currentEditingTxActive && String(acctId) === String(currentEditingTxAccountId)) {
+      avail += Number(currentEditingTxAmount || 0);
+    }
+    return Math.max(0, avail);
+  }
+
+  function validateSpendAmount() {
+    if (!spendAmountInput) return;
+    var maxVal = parseFloat(spendAmountInput.max);
+    var curVal = parseFloat(spendAmountInput.value);
+    if (spendAmountInput.hasAttribute('max') && !isNaN(maxVal) && !isNaN(curVal) && curVal > maxVal) {
+      spendAmountInput.setCustomValidity('Spend amount cannot exceed the available account balance (' + spendAmountInput.max + ').');
+    } else {
+      spendAmountInput.setCustomValidity('');
+    }
+  }
+
+  function syncSpendLimit() {
+    if (!spendAmountInput) return;
+    var limit = getEffectiveSpendLimit();
+    if (limit !== null && !isNaN(limit)) {
+      var limitStr = limit.toFixed(2);
+      spendAmountInput.max = limitStr;
+      if (spendAmountHint) {
+        spendAmountHint.textContent = 'Available balance: ' + limitStr;
+      }
+    } else {
+      spendAmountInput.removeAttribute('max');
+      if (spendAmountHint) {
+        spendAmountHint.textContent = '';
+      }
+    }
+    validateSpendAmount();
+  }
+
+  if (acctSelect) acctSelect.addEventListener('change', syncSpendLimit);
+  if (spendAmountInput) spendAmountInput.addEventListener('input', validateSpendAmount);
+  if (spendIsActiveEl) spendIsActiveEl.addEventListener('change', syncSpendLimit);
+
   window.openAddSpend = function () {
     currentEditingTxId = null;
+    currentEditingTxAmount = 0;
+    currentEditingTxAccountId = '';
+    currentEditingTxActive = false;
+    clearTempEditOption();
+    if (acctSelect) {
+      acctSelect.classList.toggle('hidden', !hasFundedAccounts);
+      acctSelect.required = hasFundedAccounts;
+      if (defaultAcctId) acctSelect.value = defaultAcctId;
+    }
+    if (noFundedMsg) noFundedMsg.classList.toggle('hidden', hasFundedAccounts);
+    if (spendSubmitBtn) spendSubmitBtn.disabled = !hasFundedAccounts;
+
     document.getElementById('spend-modal-title').textContent = 'Add Spend';
     document.getElementById('spend-submit-btn').textContent = 'Record Spend';
     document.getElementById('spend-id').value = '';
     dateInput.value = todayIso;
-    var acctEl = document.getElementById('spend-account');
-    if (acctEl && defaultAcctId) acctEl.value = defaultAcctId;
     document.getElementById('spend-amount').value = '';
     document.getElementById('spend-narrative').value = '';
     document.getElementById('spend-active-row').classList.add('hidden');
@@ -452,24 +545,38 @@
       }
     }
     setSelectedCategory(firstAvailable);
+    syncSpendLimit();
     catMenu.classList.add('hidden');
     window.openModal('spend-modal');
   };
 
   window.openEditSpend = function (btn) {
     currentEditingTxId = btn.getAttribute('data-tx-id');
+    currentEditingTxAmount = parseFloat(btn.getAttribute('data-tx-amount') || '0') || 0;
+    currentEditingTxAccountId = btn.getAttribute('data-tx-account') || defaultAcctId;
+    currentEditingTxActive = btn.getAttribute('data-tx-active') === '1';
+
+    clearTempEditOption();
+    ensureEditAccountOption(currentEditingTxAccountId);
+    if (acctSelect) {
+      acctSelect.classList.remove('hidden');
+      acctSelect.required = true;
+      acctSelect.value = currentEditingTxAccountId;
+    }
+    if (noFundedMsg) noFundedMsg.classList.add('hidden');
+    if (spendSubmitBtn) spendSubmitBtn.disabled = false;
+
     document.getElementById('spend-modal-title').textContent = 'Edit Spend';
     document.getElementById('spend-submit-btn').textContent = 'Save Changes';
     document.getElementById('spend-id').value = currentEditingTxId;
     dateInput.value = btn.getAttribute('data-tx-date') || todayIso;
-    var acctEl = document.getElementById('spend-account');
-    if (acctEl) acctEl.value = btn.getAttribute('data-tx-account') || defaultAcctId;
     document.getElementById('spend-amount').value = btn.getAttribute('data-tx-amount') || '';
     document.getElementById('spend-narrative').value = btn.getAttribute('data-tx-narrative') || '';
     document.getElementById('spend-active-row').classList.remove('hidden');
-    document.getElementById('spend-is-active').checked = btn.getAttribute('data-tx-active') === '1';
+    document.getElementById('spend-is-active').checked = currentEditingTxActive;
 
     setSelectedCategory(btn.getAttribute('data-tx-cat') || '');
+    syncSpendLimit();
     catMenu.classList.add('hidden');
     window.openModal('spend-modal');
   };
