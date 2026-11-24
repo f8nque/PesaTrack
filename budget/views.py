@@ -933,7 +933,10 @@ def budget_view(request):
     if selected_id_raw.isdigit():
         current_budget = next((b for b in budgets if b.id == int(selected_id_raw)), None)
     if current_budget is None and budgets:
-        current_budget = budgets[0]
+        current_budget = next(
+            (b for b in budgets if b.start_date <= today <= b.end_date),
+            budgets[0],
+        )
 
     grouped_items = []
     actual_spent_period = Decimal('0')

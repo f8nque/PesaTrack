@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -106,6 +107,46 @@ class BudgetArchitectureTests(TestCase):
         self.assertEqual(summary['planned'], 15000.0)
         self.assertEqual(summary['budget'][0]['actual'], 2500.0)
         self.assertEqual(summary['budget'][0]['grouping_priority'], 1)
+
+    def test_budget_plan_defaults_to_current_period_and_top_on_overlap(self):
+        # Future month budget (e.g. next month) and current period budget
+        next_month_start = (self.today.replace(day=1) + timedelta(days=32)).replace(day=1)
+        next_month_end = (next_month_start + timedelta(days=31)).replace(day=1) - timedelta(days=1)
+
+        cur_start = self.today.replace(day=1)
+        cur_end = next_month_start - timedelta(days=1)
+
+        Budget.objects.create(
+            user=self.user,
+            name='Next Month Budget',
+            start_date=next_month_start,
+            end_date=next_month_end,
+            allocated_amount=Decimal('60000.00'),
+        )
+        current_b = Budget.objects.create(
+            user=self.user,
+            name='Current Month Budget',
+            start_date=cur_start,
+            end_date=cur_end,
+            allocated_amount=Decimal('50000.00'),
+        )
+
+        # Even though Next Month Budget has a newer start_date, /budget/ picks Current Month Budget
+        res = self.client.get('/budget/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['current_budget'].id, current_b.id)
+
+        # If another budget overlaps today (with later start_date or newer id), pick the top 1
+        overlap_b = Budget.objects.create(
+            user=self.user,
+            name='Overlap Budget Top',
+            start_date=self.today,
+            end_date=cur_end,
+            allocated_amount=Decimal('25000.00'),
+        )
+        res_overlap = self.client.get('/budget/')
+        self.assertEqual(res_overlap.status_code, 200)
+        self.assertEqual(res_overlap.context['current_budget'].id, overlap_b.id)
 
     def test_restrict_one_entry_per_category_and_date(self):
         group = BudgetGroupCategory.objects.create(user=self.user, name='UPKEEP', priority=1)
