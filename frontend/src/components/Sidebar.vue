@@ -11,20 +11,27 @@ defineProps({
   theme: {
     type: String,
     default: 'dark'
+  },
+  mobileOpen: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['selectTab', 'signOut', 'toggleTheme'])
+const emit = defineEmits(['selectTab', 'signOut', 'toggleTheme', 'close'])
 </script>
 
 <template>
-  <aside class="sidebar">
-    <!-- Brand / Logo -->
+  <aside class="sidebar" :class="{ 'mobile-open': mobileOpen }">
+    <!-- Brand / Logo & Mobile Close -->
     <div class="sidebar-brand">
-      <div class="brand-avatar">S</div>
-      <div class="brand-text">
-        <span class="brand-title">Tally Portal</span>
+      <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1;">
+        <div class="brand-avatar">S</div>
+        <div class="brand-text">
+          <span class="brand-title">Tally Portal</span>
+        </div>
       </div>
+      <button class="mobile-close-btn" aria-label="Close menu" @click="emit('close')">&times;</button>
     </div>
 
     <!-- Navigation Menu -->
@@ -34,7 +41,7 @@ const emit = defineEmits(['selectTab', 'signOut', 'toggleTheme'])
         :key="item.id"
         class="nav-item"
         :class="{ active: currentTab === item.id }"
-        @click="emit('selectTab', item.id)"
+        @click="emit('selectTab', item.id); emit('close')"
       >
         <span class="nav-label">{{ item.label }}</span>
       </button>
@@ -206,5 +213,46 @@ const emit = defineEmits(['selectTab', 'signOut', 'toggleTheme'])
   background: rgba(239, 68, 68, 0.12);
   color: var(--text-danger);
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* Mobile Sidebar Drawer */
+.mobile-close-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+}
+
+.mobile-close-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-subtle);
+}
+
+@media (max-width: 768px) {
+  .mobile-close-btn {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 1050;
+    width: 275px;
+    max-width: 82vw;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.65);
+    transform: translateX(-100%);
+    transition: transform 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
 }
 </style>

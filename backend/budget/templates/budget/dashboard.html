@@ -1,0 +1,54 @@
+{% extends "budget/base.html" %}
+{% load budget_extras %}
+
+{% block title %}Dashboard — Tally{% endblock %}
+
+{% block content %}
+<div class="dashboard-view">
+  <div class="page-header between-header">
+    <div>
+      <p class="muted" style="margin: 0 0 0.25rem;">Left this month ({{ s.month }})</p>
+      <p class="big {% if s.left < 0 %}neg{% endif %}">{{ s.left|money }}</p>
+    </div>
+
+    <form method="get" action="{% url 'dashboard' %}" class="row" style="margin: 0;">
+      <input type="month" name="month" value="{{ s.month }}" onchange="this.form.submit()" aria-label="Select month" />
+    </form>
+  </div>
+
+  <div class="facts">
+    <span>Income {{ s.income|money }}</span>
+    <span>Spent {{ s.spent|money }}</span>
+    <span>Debt repaid {{ s.debt_paid|money }}</span>
+    <span>Savings rate {{ s.savings_rate }}%</span>
+  </div>
+
+  <div class="facts">
+    <span>Spent today {{ s.today_spent|money }}</span>
+    <span>Unallocated {{ s.unallocated|money }}</span>
+    <span>All accounts {{ s.total_balance|money }}</span>
+    <span>Debt owed {{ s.debt_balance|money }}</span>
+  </div>
+
+  <h2>Budget remaining</h2>
+  {% if not s.budget %}
+    <p class="muted">No budget for this month. Set one in the <a href="{% url 'budget' %}" style="color: var(--accent-orange);">Budget Plan</a> tab.</p>
+  {% else %}
+    <ul>
+      {% for b in s.budget %}
+        <li class="stack">
+          <div class="between">
+            <strong>{{ b.name }}</strong>
+            <span class="{% if b.is_over %}neg{% endif %}">
+              {{ b.remaining|money }} left of {{ b.planned|money }}
+            </span>
+          </div>
+          <div class="track">
+            <i class="{% if b.is_over %}over{% endif %}" style="width: {{ b.pct }}%;"></i>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}

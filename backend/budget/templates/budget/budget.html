@@ -1,0 +1,342 @@
+{% extends "budget/base.html" %}
+{% load budget_extras %}
+
+{% block title %}Budget Plan — Tally{% endblock %}
+
+{% block content %}
+<div class="budget-page">
+  <!-- Top Header -->
+  <div class="page-header between-header">
+    <div>
+      <h1 class="page-title">Budget Management</h1>
+      <p class="page-subtitle">
+        Display organized by <span class="tag-cyan">Budget Grouping</span> (Priority 1-10) with
+        <span class="tag-orange">Inputted Budget Amount</span> vs <span class="tag-green">Cumulated Items Allocation</span>
+      </p>
+    </div>
+
+    <div class="header-actions">
+      {% if budgets %}
+        <form method="get" action="{% url 'budget' %}" style="margin: 0;">
+          <select name="budget" class="form-select budget-select" onchange="this.form.submit()" aria-label="Select Budget">
+            {% for b in budgets %}
+              <option value="{{ b.id }}" {% if current_budget and b.id == current_budget.id %}selected{% endif %}>
+                {{ b.name }} ({{ b.start_date|date:"Y-m-d" }})
+              </option>
+            {% endfor %}
+          </select>
+        </form>
+      {% endif %}
+
+      <button type="button" class="btn-orange-pill" onclick="openCreateBudgetModal()">
+        + Create Budget
+      </button>
+    </div>
+  </div>
+
+  {% if not budgets %}
+    <div class="empty-state">
+      <h3>No budgets created yet</h3>
+      <p class="muted">Create your first budget to set an overall allocated amount and plan budget items.</p>
+      <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openCreateBudgetModal()">
+        + Create First Budget
+      </button>
+    </div>
+  {% elif current_budget %}
+    <!-- Active Budget Banner -->
+    <div class="budget-banner">
+      <div>
+        <h2 class="banner-title">{{ current_budget.name }}</h2>
+        <p class="banner-sub">
+          <span>{{ current_budget.start_date|date:"M j, Y" }} &mdash; {{ current_budget.end_date|date:"M j, Y" }}</span>
+          {% if current_budget.description %} &bull; {{ current_budget.description }}{% endif %}
+        </p>
+      </div>
+      <div class="banner-buttons">
+        <button type="button" class="btn-secondary-pill" onclick="openEditBudgetModal()">Edit Budget</button>
+        <button type="button" class="btn-orange-pill" onclick="openAddItemModal()">+ Add Budget Item</button>
+      </div>
+    </div>
+
+    <!-- The Two Core Values & Budget Metrics Cards -->
+    <div class="budget-metrics-grid">
+      <div class="metric-card highlight-border">
+        <span class="metric-label">1. Inputted Allocated Budget</span>
+        <div class="metric-value accent-orange">{{ current_budget.allocated_amount|money }}</div>
+        <span class="metric-hint">Target ceiling amount you inputted</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">2. Cumulated Budget Items</span>
+        <div class="metric-value accent-green">{{ current_budget.total_item_planned|money }}</div>
+        <span class="metric-hint">Computed sum of items planned below</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Unallocated Difference</span>
+        <div class="metric-value {% if current_budget.unallocated_amount < 0 %}text-danger{% endif %}">
+          {{ current_budget.unallocated_amount|money }}
+        </div>
+        <span class="metric-hint">
+          {% if current_budget.unallocated_amount >= 0 %}Remaining to allocate{% else %}Over-allocated across items{% endif %}
+        </span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Actual Spent in Period</span>
+        <div class="metric-value">{{ actual_spent_period|money }}</div>
+        <span class="metric-hint">Recorded expenses in timeframe</span>
+      </div>
+    </div>
+
+    <!-- Budget Display Section -->
+    <div class="budget-display-section">
+      <div class="section-title-row">
+        <h2 style="margin: 0;">Budget Items Breakdown</h2>
+        <span class="muted" style="font-size: 0.88rem;">Ordered by Grouping Priority (1: Highest &rarr; 10: Lowest)</span>
+      </div>
+
+      {% if not grouped_items %}
+        <div class="empty-state" style="padding: 2.5rem 1rem;">
+          <p class="muted">No budget items added to this budget yet.</p>
+          <button type="button" class="btn-orange-pill" style="margin-top: 0.5rem;" onclick="openAddItemModal()">
+            + Add First Budget Item
+          </button>
+        </div>
+      {% else %}
+        <div class="groups-container">
+          {% for grp in grouped_items %}
+            <div class="group-card">
+              <div class="group-header">
+                <div class="group-info">
+                  <span class="priority-pill priority-{{ grp.priority }}">Priority {{ grp.priority }}</span>
+                  <h3 class="group-name">{{ grp.name }}</h3>
+                </div>
+                <div class="group-totals">
+                  <span>Planned: <strong>{{ grp.total_planned|money }}</strong></span>
+                  <span>Actual: <strong class="accent-green">{{ grp.total_actual|money }}</strong></span>
+                </div>
+              </div>
+
+              <div class="data-list-container" style="gap: 0.4rem; padding: 0.75rem 1rem 1rem;">
+                <div class="data-list-header budget-item-cols">
+                  <div>Budget Category</div>
+                  <div>Type</div>
+                  <div>Planned Amount</div>
+                  <div>Actual Spent & Progress</div>
+                  <div>Reason for Update</div>
+                  <div style="text-align: right;">Actions</div>
+                </div>
+
+                {% for item in grp.items %}
+                  <div class="data-row budget-item-cols">
+                    <div>
+                      <h4 class="row-title">{{ item.budget_category_name }}</h4>
+                      <div class="row-subtitle">Item #{{ item.id }}</div>
+                    </div>
+
+                    <div>
+                      <span class="badge {% if item.category_type == 'needs' %}badge-type-budget{% elif item.category_type == 'savings' %}badge-savings{% else %}badge-type-main{% endif %}">
+                        {{ item.category_type }}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span class="amount-big" style="font-size: 1.05rem; font-weight: 700;">{{ item.amount|money }}</span>
+                    </div>
+
+                    <div>
+                      <div style="font-size: 0.88rem; margin-bottom: 0.25rem;">
+                        <span class="{% if item.is_over %}text-danger{% endif %}">{{ item.actual_spent|money }}</span>
+                        <small class="muted">({{ item.pct }}%)</small>
+                      </div>
+                      <div class="track" style="height: 6px;">
+                        <i class="{% if item.is_over %}over{% endif %}" style="width: {{ item.pct }}%;"></i>
+                      </div>
+                    </div>
+
+                    <div>
+                      {% if item.reason %}
+                        <span class="reason-text">{{ item.reason }}</span>
+                      {% else %}
+                        <span class="muted" style="font-size: 0.82rem; font-style: italic;">No update reason</span>
+                      {% endif %}
+                    </div>
+
+                    <div class="row-actions">
+                      <button
+                        type="button"
+                        class="btn-orange-pill"
+                        style="padding: 0.35rem 0.85rem; font-size: 0.8rem;"
+                        data-item-id="{{ item.id }}"
+                        data-item-bcat="{{ item.budget_category_id }}"
+                        data-item-amount="{{ item.amount }}"
+                        data-item-reason="{{ item.reason|escapejs }}"
+                        onclick="openEditItemModal(this)"
+                      >Edit</button>
+                      <form method="post" action="{% url 'budget_item_delete' item.id %}" style="margin: 0;" onsubmit="return confirm('Remove this budget item allocation?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-danger-pill" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">Remove</button>
+                      </form>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- Create / Edit Budget Modal -->
+  <div id="budget-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="budget-modal-title" class="modal-title">Create a Budget</h2>
+        <button type="button" class="modal-close-btn" data-modal-close="budget-modal">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'budget_save' %}">
+        {% csrf_token %}
+        <input type="hidden" name="id" id="budget-id" value="">
+
+        <div class="form-group">
+          <label class="form-label" for="budget-name">Budget Name *</label>
+          <input id="budget-name" name="name" class="form-input" placeholder="e.g. November 2026 Monthly Budget" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="budget-desc">Budget Description</label>
+          <textarea id="budget-desc" name="description" class="form-textarea" rows="2" placeholder="e.g. Household living expenses, food and utilities"></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="budget-start">Start Date *</label>
+            <input id="budget-start" name="start_date" type="date" class="form-input" required />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="budget-end">End Date *</label>
+            <input id="budget-end" name="end_date" type="date" class="form-input" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="budget-allocated">Allocated Budget Amount *</label>
+          <input id="budget-allocated" name="allocated_amount" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 75000.00" required />
+          <span class="form-hint">This acts as your overall allocated budget amount (distinct from cumulated budget items).</span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="budget-modal">Cancel</button>
+          <button type="submit" id="budget-submit-btn" class="btn-orange-pill">Create Budget</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add / Edit Budget Item Modal -->
+  <div id="budget-item-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="item-modal-title" class="modal-title">Add Budget Item</h2>
+        <button type="button" class="modal-close-btn" data-modal-close="budget-item-modal">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'budget_item_save' %}">
+        {% csrf_token %}
+        <input type="hidden" name="id" id="item-id" value="">
+        <input type="hidden" name="budget" value="{% if current_budget %}{{ current_budget.id }}{% endif %}">
+
+        <div class="form-group">
+          <label class="form-label" for="item-bcat">Linked Budget Category *</label>
+          <select id="item-bcat" name="budget_category" class="form-select" required>
+            <option value="" disabled>Select Budget Category</option>
+            {% for c in budget_categories %}
+              <option value="{{ c.id }}">{{ c.name }} ({{ c.grouping.name }} &bull; Priority: {{ c.grouping.priority }})</option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Budget items link directly to a Budget Category.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="item-amount">Planned Amount *</label>
+          <input id="item-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="item-reason">Reason for Update</label>
+          <input id="item-reason" name="reason" type="text" class="form-input" placeholder="e.g. Increased allocation for school holiday visitors" />
+          <span class="form-hint">Records the justification or note for this allocation or change.</span>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="budget-item-modal">Cancel</button>
+          <button type="submit" id="item-submit-btn" class="btn-orange-pill">Add Item</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var defaultBudgetName = "{{ default_budget_name|escapejs }}";
+  var defaultStart = "{{ default_start }}";
+  var defaultEnd = "{{ default_end }}";
+
+  window.openCreateBudgetModal = function () {
+    document.getElementById('budget-modal-title').textContent = 'Create a Budget';
+    document.getElementById('budget-submit-btn').textContent = 'Create Budget';
+    document.getElementById('budget-id').value = '';
+    document.getElementById('budget-name').value = defaultBudgetName;
+    document.getElementById('budget-desc').value = '';
+    document.getElementById('budget-start').value = defaultStart;
+    document.getElementById('budget-end').value = defaultEnd;
+    document.getElementById('budget-allocated').value = '';
+    window.openModal('budget-modal');
+  };
+
+  window.openEditBudgetModal = function () {
+    {% if current_budget %}
+      document.getElementById('budget-modal-title').textContent = 'Edit Budget';
+      document.getElementById('budget-submit-btn').textContent = 'Save Changes';
+      document.getElementById('budget-id').value = '{{ current_budget.id }}';
+      document.getElementById('budget-name').value = "{{ current_budget.name|escapejs }}";
+      document.getElementById('budget-desc').value = "{{ current_budget.description|escapejs }}";
+      document.getElementById('budget-start').value = "{{ current_budget.start_date|date:'Y-m-d' }}";
+      document.getElementById('budget-end').value = "{{ current_budget.end_date|date:'Y-m-d' }}";
+      document.getElementById('budget-allocated').value = "{{ current_budget.allocated_amount }}";
+      window.openModal('budget-modal');
+    {% endif %}
+  };
+
+  window.openAddItemModal = function () {
+    document.getElementById('item-modal-title').textContent = 'Add Budget Item';
+    document.getElementById('item-submit-btn').textContent = 'Add Item';
+    document.getElementById('item-id').value = '';
+    var bcat = document.getElementById('item-bcat');
+    bcat.disabled = false;
+    if (bcat.options.length > 1) bcat.selectedIndex = 1;
+    document.getElementById('item-amount').value = '';
+    document.getElementById('item-reason').value = '';
+    window.openModal('budget-item-modal');
+  };
+
+  window.openEditItemModal = function (btn) {
+    document.getElementById('item-modal-title').textContent = 'Edit Budget Item';
+    document.getElementById('item-submit-btn').textContent = 'Save Changes';
+    document.getElementById('item-id').value = btn.getAttribute('data-item-id');
+    var bcat = document.getElementById('item-bcat');
+    bcat.value = btn.getAttribute('data-item-bcat');
+    bcat.disabled = true;
+    document.getElementById('item-amount').value = btn.getAttribute('data-item-amount');
+    document.getElementById('item-reason').value = btn.getAttribute('data-item-reason') || '';
+    window.openModal('budget-item-modal');
+  };
+})();
+</script>
+{% endblock %}

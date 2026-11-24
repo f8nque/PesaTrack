@@ -11,6 +11,7 @@ from .models import (
     Account, BudgetGroupCategory, BudgetCategory, SpentCategory,
     Debt, Transaction, Budget, BudgetItem, total
 )
+from .services import compute_account_insights, compute_summary, reconcile_account_balance
 from .serializers import (
     AccountSerializer, BudgetGroupCategorySerializer, BudgetCategorySerializer,
     SpentCategorySerializer, DebtSerializer, TransactionSerializer,
@@ -177,49 +178,31 @@ class AccountViewSet(OwnedViewSet):
 
     @action(detail=True, methods=['post'])
     def reconcile(self, request, pk=None):
-        from decimal import Decimal
         account = self.get_object()
         actual_balance = request.data.get('actual_balance')
         if actual_balance is None:
             return Response({'error': 'actual_balance is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        reconcile_date = request.data.get('date') or timezone.localdate()
+        notes = request.data.get('notes') or ''
         try:
-            actual = Decimal(str(actual_balance))
+            tx, diff, balance = reconcile_account_balance(
+                request.user, account, actual_balance, reconcile_date=reconcile_date, notes=notes
+            )
         except Exception:
             return Response({'error': 'Invalid actual_balance amount.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        current = account.balance
-        diff = actual - current
-        reconcile_date = request.data.get('date') or timezone.localdate()
-        notes = request.data.get('notes') or ''
-
-        if diff == 0:
+        if tx is None:
             return Response({
                 'message': 'Account balance matches actual balance. No adjustment needed.',
                 'difference': 0,
-                'balance': float(current),
+                'balance': float(balance),
                 'account': self.get_serializer(account).data
             })
 
-        adj_type = 'credit' if diff > 0 else 'debit'
-        amt = abs(diff)
-        desc = notes or f"Balance Adjustment ({'+' if diff > 0 else '-'}{amt} reconciled to {actual})"
-
-        tx = Transaction.objects.create(
-            user=request.user,
-            account=account,
-            kind='adjustment',
-            adjustment_type=adj_type,
-            amount=amt,
-            transaction_date=reconcile_date,
-            description=desc,
-            is_active=True
-        )
-
-        account.refresh_from_db()
         return Response({
             'message': f"Account successfully reconciled. Silent adjustment of {diff:+f} recorded.",
             'difference': float(diff),
-            'balance': float(account.balance),
+            'balance': float(balance),
             'transaction': TransactionSerializer(tx, context={'request': request}).data,
             'account': self.get_serializer(account).data
         }, status=status.HTTP_201_CREATED)
@@ -230,116 +213,15 @@ class AccountViewSet(OwnedViewSet):
         today = timezone.localdate()
         month = request.query_params.get('month') or today.strftime('%Y-%m')
         timeframe = request.query_params.get('timeframe', 'month')
-
-        try:
-            y, m = map(int, month.split('-'))
-        except ValueError:
-            y, m = today.year, today.month
-
-        # Outgoing transactions where account=account
-        tx_out = account.transactions.filter(is_active=True)
-        # Incoming transactions where to_account=account
-        tx_in = account.incoming.filter(is_active=True, kind='transfer')
-
-        if timeframe == 'month':
-            tx_out_period = tx_out.filter(transaction_date__year=y, transaction_date__month=m)
-            tx_in_period = tx_in.filter(transaction_date__year=y, transaction_date__month=m)
-        else:
-            tx_out_period = tx_out
-            tx_in_period = tx_in
-
-        f = lambda qs, field='amount': float(qs.aggregate(t=Sum(field))['t'] or 0)
-
-        # Inflow
-        income_amt = f(tx_out_period.filter(kind='income'))
-        transfers_in_amt = f(tx_in_period)
-        adj_credit_amt = f(tx_out_period.filter(kind='adjustment', adjustment_type='credit'))
-        total_inflow = income_amt + transfers_in_amt + adj_credit_amt
-
-        # Outflow
-        expenses_amt = f(tx_out_period.filter(kind='expense'))
-        transfers_out_amt = f(tx_out_period.filter(kind='transfer'))
-        fees_amt = f(tx_out_period.exclude(fee=0), 'fee')
-        adj_debit_amt = f(tx_out_period.filter(kind='adjustment', adjustment_type='debit'))
-        total_outflow = expenses_amt + transfers_out_amt + fees_amt + adj_debit_amt
-
-        net_flow = total_inflow - total_outflow
-
-        # Average daily spend
-        if timeframe == 'month':
-            if y == today.year and m == today.month:
-                days_count = max(today.day, 1)
-            else:
-                import calendar
-                days_count = calendar.monthrange(y, m)[1]
-        else:
-            first_tx = tx_out.order_by('transaction_date').first()
-            if first_tx:
-                days_count = max((today - first_tx.transaction_date).days, 1)
-            else:
-                days_count = 1
-        avg_daily_spend = round((expenses_amt + fees_amt) / days_count, 2)
-
-        # Top expense categories for this specific wallet
-        cat_expenses = (
-            tx_out_period.filter(kind='expense', spent_category__isnull=False)
-            .values('spent_category__id', 'spent_category__name', 'spent_category__budget_category__name')
-            .annotate(total_spent=Sum('amount'))
-            .order_by('-total_spent')[:8]
-        )
-        total_cat_spent = expenses_amt or 1.0
-        top_categories = []
-        for c in cat_expenses:
-            amt = float(c['total_spent'] or 0)
-            pct = round((amt / total_cat_spent) * 100, 1)
-            top_categories.append({
-                'category_id': c['spent_category__id'],
-                'name': c['spent_category__name'],
-                'budget_category': c['spent_category__budget_category__name'],
-                'total_spent': amt,
-                'percentage': pct
-            })
-
-        # Recent transactions for this account (last 15)
-        recent_qs = Transaction.objects.filter(
-            models.Q(account=account) | models.Q(to_account=account),
-            is_active=True
-        ).order_by('-transaction_date', '-id')[:15]
-        recent_txs = TransactionSerializer(recent_qs, many=True, context={'request': request}).data
-
-        # Sub-accounts / pots breakdown
-        pots = []
-        for pot in account.sub_accounts.filter(is_archived=False):
-            pots.append({
-                'id': pot.id,
-                'name': pot.name,
-                'kind': pot.kind,
-                'balance': float(pot.balance),
-                'is_pot': pot.is_pot
-            })
+        data = compute_account_insights(account, month_str=month, timeframe=timeframe)
+        recent_txs = TransactionSerializer(data.pop('recent_qs'), many=True, context={'request': request}).data
+        data['inflow'].pop('pct', None)
+        data['outflow'].pop('pct', None)
 
         return Response({
             'account': AccountSerializer(account, context={'request': request}).data,
-            'timeframe': timeframe,
-            'month': month,
-            'inflow': {
-                'income': income_amt,
-                'transfers_in': transfers_in_amt,
-                'adjustments_credit': adj_credit_amt,
-                'total': total_inflow
-            },
-            'outflow': {
-                'expenses': expenses_amt,
-                'transfers_out': transfers_out_amt,
-                'fees': fees_amt,
-                'adjustments_debit': adj_debit_amt,
-                'total': total_outflow
-            },
-            'net_flow': net_flow,
-            'average_daily_spend': avg_daily_spend,
-            'top_categories': top_categories,
+            **data,
             'recent_transactions': recent_txs,
-            'pots': pots
         })
 
 
@@ -368,74 +250,9 @@ def register(request):
 @api_view(['GET'])
 def summary(request):
     """Monthly financial state: income -> budget -> actual -> remaining."""
-    u, today = request.user, timezone.localdate()
-    month = request.query_params.get('month') or today.strftime('%Y-%m')
-    try:
-        y, m = map(int, month.split('-'))
-    except ValueError:
-        y, m = today.year, today.month
-
-    f = lambda qs: float(qs.aggregate(t=Sum('amount'))['t'] or 0)
-    T = Transaction.objects.filter(user=u, is_active=True)
-    inm = T.filter(transaction_date__year=y, transaction_date__month=m)
-    exp = inm.filter(kind='expense')
-    income = f(inm.filter(kind='income'))
-    spent, debt_paid = f(exp.filter(debt__isnull=True)), f(exp.filter(debt__isnull=False))
-
-    # Find the active budget covering today or for this month
-    active_budget = Budget.objects.filter(
-        user=u, start_date__year=y, start_date__month=m
-    ).first()
-
-    budget_items = []
-    allocated_amount = 0.0
-    total_planned = 0.0
-
-    if active_budget:
-        allocated_amount = float(active_budget.allocated_amount)
-        items = active_budget.items.select_related('budget_category__grouping').order_by('budget_category__grouping__priority', 'budget_category__name')
-        for item in items:
-            spent_ids = item.budget_category.spent_categories.values_list('id', flat=True)
-            actual = f(exp.filter(spent_category_id__in=spent_ids))
-            budget_items.append({
-                'id': item.id,
-                'category_id': item.budget_category_id,
-                'name': item.budget_category.name,
-                'grouping': item.budget_category.grouping.name,
-                'grouping_priority': item.budget_category.grouping.priority,
-                'category_type': item.budget_category.category_type,
-                'planned': float(item.amount),
-                'actual': actual,
-                'reason': item.reason,
-            })
-        total_planned = sum(b['planned'] for b in budget_items)
-
-    fees = float(inm.exclude(fee=0).aggregate(t=Sum('fee'))['t'] or 0)
-    left = income - spent - debt_paid
-
-    # Active accounts (excluding archived)
-    active_accounts = Account.objects.filter(user=u, is_archived=False)
-    liquid_balance = float(sum(a.balance for a in active_accounts.filter(is_pot=False)))
-    total_balance = float(sum(a.balance for a in active_accounts))
-    pots_balance = float(sum(a.balance for a in active_accounts.filter(is_pot=True)))
-
-    return Response({
-        'month': month,
-        'income': income,
-        'spent': spent,
-        'debt_paid': debt_paid,
-        'fees': fees,
-        'left': left,
-        'allocated_budget': allocated_amount, # Inputted budget amount
-        'planned': total_planned,             # Computed from budget items
-        'unallocated': allocated_amount - total_planned,
-        'savings_rate': round(left / income * 100, 1) if income else 0,
-        'today_spent': f(T.filter(kind='expense', transaction_date=today)),
-        'budget': budget_items,
-        'budget_id': active_budget.id if active_budget else None,
-        'budget_name': active_budget.name if active_budget else None,
-        'total_balance': total_balance,
-        'liquid_balance': liquid_balance,
-        'pots_balance': pots_balance,
-        'debt_balance': float(sum(d.balance for d in Debt.objects.filter(user=u))),
-    })
+    data = compute_summary(request.user, request.query_params.get('month'))
+    for b in data['budget']:
+        b.pop('remaining', None)
+        b.pop('pct', None)
+        b.pop('is_over', None)
+    return Response(data)

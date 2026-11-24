@@ -397,3 +397,175 @@ class BankingAccountArchitectureTests(TestCase):
         self.assertGreater(res_ins.data['average_daily_spend'], 0)
         self.assertEqual(len(res_ins.data['top_categories']), 1)
         self.assertEqual(res_ins.data['top_categories'][0]['name'], 'Supermarket')
+
+
+class DjangoTemplateWebViewsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='webuser', password='password123')
+        self.today = timezone.localdate()
+
+    def test_auth_redirects_and_login_register(self):
+        # Unauthenticated root redirects to /login/
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 302)
+        self.assertIn('/login/', res.url)
+
+        # Register a new user via template view
+        res_reg = self.client.post('/register/', {'username': 'newuser', 'password': 'secret123'})
+        self.assertRedirects(res_reg, '/')
+        self.assertTrue(User.objects.filter(username='newuser').exists())
+
+        # Logout
+        res_out = self.client.post('/logout/')
+        self.assertRedirects(res_out, '/login/')
+
+        # Login with existing user
+        res_in = self.client.post('/login/', {'username': 'webuser', 'password': 'password123'})
+        self.assertRedirects(res_in, '/')
+
+    def test_all_pages_render_and_workflows_work(self):
+        self.client.force_login(self.user)
+
+        # 1. Categories: create grouping -> budget category -> spent category
+        self.client.post('/categories/save/', {'tier': 'grouping', 'name': 'UPKEEP', 'priority': '1'})
+        grp = BudgetGroupCategory.objects.get(user=self.user, name='UPKEEP')
+
+        self.client.post('/categories/save/', {
+            'tier': 'budget',
+            'name': 'Shopping',
+            'grouping': grp.id,
+            'category_type': 'needs',
+            'is_active': 'on',
+            'is_active_submitted': '1',
+        })
+        bcat = BudgetCategory.objects.get(user=self.user, name='Shopping')
+
+        self.client.post('/categories/save/', {
+            'tier': 'spent',
+            'name': 'MEAT',
+            'budget_category': bcat.id,
+            'is_active': 'on',
+            'is_active_submitted': '1',
+        })
+        scat = SpentCategory.objects.get(user=self.user, name='MEAT')
+
+        res_cats = self.client.get('/categories/?tab=spent')
+        self.assertEqual(res_cats.status_code, 200)
+        self.assertContains(res_cats, 'MEAT')
+
+        # 2. Accounts: create two accounts, transfer, reconcile, insights
+        self.client.post('/accounts/save/', {
+            'name': 'KCB Bank',
+            'kind': 'bank',
+            'opening_balance': '10000.00',
+            'as_of_date': str(self.today),
+        })
+        self.client.post('/accounts/save/', {
+            'name': 'M-Pesa',
+            'kind': 'mpesa',
+            'opening_balance': '2000.00',
+            'as_of_date': str(self.today),
+            'is_default': 'on',
+        })
+        bank = Account.objects.get(user=self.user, name='KCB Bank')
+        mpesa = Account.objects.get(user=self.user, name='M-Pesa')
+        self.assertTrue(mpesa.is_default)
+
+        self.client.post('/accounts/transfer/', {
+            'from_account': bank.id,
+            'to_account': mpesa.id,
+            'amount': '3000.00',
+            'fee': '25.00',
+            'transaction_date': str(self.today),
+            'narrative': 'Top up M-Pesa',
+        })
+        self.assertEqual(float(bank.balance), 6975.0)
+        self.assertEqual(float(mpesa.balance), 5000.0)
+
+        self.client.post(f'/accounts/{mpesa.id}/reconcile/', {
+            'actual_balance': '4950.00',
+            'date': str(self.today),
+            'notes': 'SMS check',
+        })
+        self.assertEqual(float(mpesa.balance), 4950.0)
+
+        res_ins = self.client.get(f'/accounts/?insights={mpesa.id}&timeframe=month')
+        self.assertEqual(res_ins.status_code, 200)
+        self.assertContains(res_ins, 'M-Pesa Insights')
+
+        # 3. Today's Spends: create spend and verify duplicate prevention
+        self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': mpesa.id,
+            'category': scat.id,
+            'amount': '500.00',
+            'narrative': 'Beef stew',
+        })
+        res_today = self.client.get('/')
+        self.assertEqual(res_today.status_code, 200)
+        self.assertContains(res_today, 'Beef stew')
+        self.assertEqual(Transaction.objects.filter(user=self.user, spent_category=scat, is_active=True).count(), 1)
+
+        # Duplicate on same date + category is rejected
+        self.client.post('/today/save/', {
+            'date': str(self.today),
+            'account': mpesa.id,
+            'category': scat.id,
+            'amount': '200.00',
+            'narrative': 'Duplicate beef',
+        })
+        self.assertEqual(Transaction.objects.filter(user=self.user, spent_category=scat, is_active=True).count(), 1)
+
+        # 4. Transactions page
+        self.client.post('/transactions/add/', {
+            'kind': 'income',
+            'account': bank.id,
+            'amount': '25000.00',
+            'transaction_date': str(self.today),
+            'description': 'Salary',
+        })
+        res_txs = self.client.get('/transactions/')
+        self.assertEqual(res_txs.status_code, 200)
+        self.assertContains(res_txs, 'Salary')
+
+        # 5. Budget Plan page
+        self.client.post('/budget/save/', {
+            'name': 'Monthly Plan',
+            'description': 'Main plan',
+            'start_date': str(self.today.replace(day=1)),
+            'end_date': str(self.today.replace(day=28)),
+            'allocated_amount': '30000.00',
+        })
+        b = Budget.objects.get(user=self.user, name='Monthly Plan')
+        self.client.post('/budget/item/save/', {
+            'budget': b.id,
+            'budget_category': bcat.id,
+            'amount': '5000.00',
+            'reason': 'Groceries budget',
+        })
+        res_budget = self.client.get(f'/budget/?budget={b.id}')
+        self.assertEqual(res_budget.status_code, 200)
+        self.assertContains(res_budget, 'Monthly Plan')
+        self.assertContains(res_budget, 'Groceries budget')
+
+        # 6. Dashboard page
+        res_dash = self.client.get('/dashboard/')
+        self.assertEqual(res_dash.status_code, 200)
+        self.assertContains(res_dash, 'Shopping')
+
+        # 7. Debts page
+        self.client.post('/debts/add/', {
+            'name': 'Car Loan',
+            'principal': '100000.00',
+            'interest_rate': '10.00',
+            'min_payment': '5000.00',
+        })
+        debt = Debt.objects.get(user=self.user, name='Car Loan')
+        self.client.post(f'/debts/{debt.id}/repay/', {
+            'account': bank.id,
+            'amount': '5000.00',
+        })
+        res_debts = self.client.get('/debts/')
+        self.assertEqual(res_debts.status_code, 200)
+        self.assertContains(res_debts, 'Car Loan')
+        self.assertEqual(float(debt.balance), 95000.0)

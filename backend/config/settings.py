@@ -134,3 +134,8 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['rest_framework.authentication.TokenAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
 }
+
+CURRENCY = 'KES'
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'today'
+LOGOUT_REDIRECT_URL = 'login'

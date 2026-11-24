@@ -1,0 +1,478 @@
+{% extends "budget/base.html" %}
+{% load budget_extras %}
+
+{% block title %}Today's Spends — Tally{% endblock %}
+
+{% block content %}
+<div class="today-spends-page">
+  <!-- Page Header -->
+  <div class="page-header between-header">
+    <div>
+      <h1 class="page-title">Today's Spends</h1>
+      <p class="page-subtitle">
+        Recorded transactions for <span class="tag-orange">{{ today|date:"D, M j, Y" }}</span>
+        — Total Active: <span class="tag-green">{{ today_total|money }}</span>
+      </p>
+    </div>
+    <button type="button" class="btn-orange-pill" onclick="openAddSpend()">
+      + Add Spend
+    </button>
+  </div>
+
+  <!-- Search & Category Filter Form -->
+  <form method="get" action="{% url 'today' %}" id="today-filter-form">
+    <div class="search-pill-container" style="margin-bottom: 1rem;">
+      <input
+        name="q"
+        value="{{ search_query }}"
+        type="text"
+        class="search-pill-input"
+        placeholder="Search by narrative, description, spent category, or path..."
+      />
+    </div>
+
+    <div class="filters-bar">
+      <div class="stat-pill">
+        <span>Active Spends:</span>
+        <strong class="highlight">{{ stats.active }}</strong>
+      </div>
+      <div class="stat-pill">
+        <span>Total Spent Today:</span>
+        <strong class="accent-green">{{ today_total|money }}</strong>
+      </div>
+
+      <div class="filter-pill-select">
+        <label class="filter-label" for="filter-cat-select">Category:</label>
+        <select
+          id="filter-cat-select"
+          name="category"
+          class="category-select-pill"
+          onchange="document.getElementById('today-filter-form').submit()"
+        >
+          <option value="">All Categories ({{ categories|length }})</option>
+          {% for c in categories %}
+            <option value="{{ c.id }}" {% if selected_cat_id == c.id %}selected{% endif %}>
+              {{ c.full_path|default:c.name }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      {% if show_deactivated %}
+        <input type="hidden" name="show_deactivated" value="1">
+      {% endif %}
+
+      <button type="submit" class="btn-secondary-pill" style="padding: 0.35rem 0.95rem; font-size: 0.82rem;">
+        Filter
+      </button>
+
+      {% if search_query or selected_cat_id %}
+        <a href="{% url 'today' %}{% if show_deactivated %}?show_deactivated=1{% endif %}" class="btn-secondary-pill" style="text-decoration: none; padding: 0.35rem 0.95rem; font-size: 0.82rem;">
+          Clear
+        </a>
+      {% endif %}
+
+      {% if stats.deactivated > 0 %}
+        <a
+          href="{% url 'today' %}?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if selected_cat_id %}category={{ selected_cat_id }}&{% endif %}{% if not show_deactivated %}show_deactivated=1{% endif %}"
+          class="filter-btn {% if show_deactivated %}active{% endif %}"
+          style="margin-left: auto; text-decoration: none;"
+        >
+          {% if show_deactivated %}Hide Deactivated{% else %}Show Deactivated ({{ stats.deactivated }}){% endif %}
+        </a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Empty State -->
+  {% if not transactions %}
+    <div class="empty-state">
+      <h3>No active spends recorded for today</h3>
+      <p class="muted">Click "+ Add Spend" above to record your first transaction for today.</p>
+    </div>
+  {% else %}
+    <!-- Clean High-Volume Data List Container -->
+    <div class="data-list-container">
+      <div class="data-list-header tx-cols">
+        <div>Narrative / Note</div>
+        <div>Spent Category / Path</div>
+        <div>Date</div>
+        <div class="text-right">Amount</div>
+        <div class="text-center">Status</div>
+        <div class="text-right">Actions</div>
+      </div>
+
+      {% for tx in transactions %}
+        <div class="data-row tx-cols {% if not tx.is_active %}is-inactive{% endif %}">
+          <div>
+            <h4 class="row-title">
+              {% if tx.description %}
+                {{ tx.description }}
+              {% elif tx.spent_category %}
+                {{ tx.spent_category.name }}
+              {% else %}
+                Uncategorised
+              {% endif %}
+            </h4>
+            <div class="row-subtitle">
+              <span class="accent-green">TX-{{ tx.id }}</span>
+              {% if tx.account %} &bull; {{ tx.account.name }}{% endif %}
+            </div>
+          </div>
+
+          <div>
+            <div class="tx-cat-name">
+              {% if tx.spent_category %}{{ tx.spent_category.name }}{% else %}Uncategorised{% endif %}
+            </div>
+            {% if tx.spent_category and tx.spent_category.full_path != tx.spent_category.name %}
+              <div class="tx-cat-path">{{ tx.spent_category.full_path }}</div>
+            {% endif %}
+          </div>
+
+          <div>
+            <span class="tx-date">{{ tx.transaction_date|date:"Y-m-d" }}</span>
+          </div>
+
+          <div class="text-right">
+            <span class="tx-amount accent-green">{{ tx.amount|money }}</span>
+          </div>
+
+          <div class="text-center">
+            <span class="badge {% if tx.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+              {% if tx.is_active %}Active{% else %}Deactivated{% endif %}
+            </span>
+          </div>
+
+          <div class="row-actions">
+            <button
+              type="button"
+              class="btn-orange-pill"
+              style="padding: 0.35rem 0.95rem; font-size: 0.82rem;"
+              data-tx-id="{{ tx.id }}"
+              data-tx-date="{{ tx.transaction_date|date:'Y-m-d' }}"
+              data-tx-cat="{{ tx.spent_category_id|default:'' }}"
+              data-tx-account="{{ tx.account_id|default:'' }}"
+              data-tx-amount="{{ tx.amount }}"
+              data-tx-narrative="{{ tx.description|escapejs }}"
+              data-tx-active="{% if tx.is_active %}1{% else %}0{% endif %}"
+              onclick="openEditSpend(this)"
+            >
+              Edit
+            </button>
+
+            <form method="post" action="{% url 'transactions_toggle' tx.id %}" style="margin: 0;">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'today' %}">
+              <button
+                type="submit"
+                class="{% if tx.is_active %}btn-danger-pill{% else %}btn-secondary-pill{% endif %}"
+                style="padding: 0.35rem 0.85rem; font-size: 0.82rem;"
+              >
+                {% if tx.is_active %}Deactivate{% else %}Activate{% endif %}
+              </button>
+            </form>
+
+            <form
+              method="post"
+              action="{% url 'transactions_delete' tx.id %}"
+              style="margin: 0;"
+              onsubmit="return confirm('Are you sure you want to permanently delete this transaction?');"
+            >
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'today' %}">
+              <button type="submit" class="btn-danger-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem;">
+                Delete
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Add / Edit Spend Modal -->
+  <div id="spend-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2 id="spend-modal-title" class="modal-title">Add Spend</h2>
+        <button type="button" class="modal-close-btn" data-modal-close="spend-modal">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'today_save' %}" id="spend-form">
+        {% csrf_token %}
+        <input type="hidden" name="id" id="spend-id" value="">
+        <input type="hidden" name="category" id="spend-category-input" value="">
+
+        <div class="form-group">
+          <label class="form-label" for="spend-date">Date *</label>
+          <input id="spend-date" name="date" type="date" class="form-input" value="{{ today_iso }}" required />
+        </div>
+
+        {% if active_accounts %}
+          <div class="form-group">
+            <label class="form-label" for="spend-account">Account</label>
+            <select id="spend-account" name="account" class="form-select">
+              {% for a in active_accounts %}
+                <option value="{{ a.id }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
+                  {{ a.name }} ({{ a.get_kind_display }}) {% if a.is_default %}⭐{% endif %}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
+
+        <!-- Searchable Spent Category Picker -->
+        <div class="form-group cat-picker-container" id="today-cat-picker">
+          <label class="form-label between-label">
+            <span>Spent Category</span>
+            <span id="dup-warn-badge" class="badge-duplicate-warn hidden">Already recorded for date</span>
+          </label>
+
+          <div id="cat-picker-trigger" class="cat-picker-trigger" onclick="toggleCatPicker(event)">
+            <div class="cat-picker-content">
+              <div id="cat-picker-name" class="cat-picker-name">No category (Uncategorised)</div>
+              <div id="cat-picker-path" class="cat-picker-path">Miscellaneous spend without a specific category</div>
+            </div>
+            <div class="cat-picker-actions">
+              <button type="button" id="cat-clear-btn" class="cat-clear-btn hidden" onclick="clearCatSelection(event)">&times;</button>
+              <span class="cat-arrow">&#9662;</span>
+            </div>
+          </div>
+
+          <div id="cat-picker-menu" class="cat-picker-menu hidden">
+            <div class="cat-search-box">
+              <input
+                id="cat-search-input"
+                type="text"
+                class="cat-search-input"
+                placeholder="Type to search category by name or path..."
+                onclick="event.stopPropagation()"
+              />
+            </div>
+
+            <div class="cat-options-list" id="cat-options-list">
+              <div
+                class="cat-option"
+                data-cat-id=""
+                data-cat-name="No category (Uncategorised)"
+                data-cat-path="Miscellaneous spend without a specific category"
+                onclick="pickCategory(this)"
+              >
+                <div class="cat-opt-info">
+                  <div class="cat-opt-name">No category (Uncategorised)</div>
+                  <div class="cat-opt-path">Miscellaneous spend without a specific category</div>
+                </div>
+              </div>
+
+              {% for c in active_categories %}
+                <div
+                  class="cat-option"
+                  data-cat-id="{{ c.id }}"
+                  data-cat-name="{{ c.name }}"
+                  data-cat-path="{{ c.full_path }}"
+                  onclick="pickCategory(this)"
+                >
+                  <div class="cat-opt-info">
+                    <div class="cat-opt-name-row">
+                      <span class="cat-opt-name">{{ c.name }}</span>
+                      <span class="badge-duplicate-warn dup-item-badge hidden">Already recorded</span>
+                    </div>
+                    <div class="cat-opt-path">{{ c.full_path }}</div>
+                  </div>
+                </div>
+              {% endfor %}
+
+              <div id="cat-no-results" class="cat-no-results hidden">No matching categories found.</div>
+            </div>
+          </div>
+
+          <span class="form-hint">
+            Select or search the granular spent category (e.g. supermarket, MEAT, milk). Duplicate entries for the same category on this date are restricted.
+          </span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spend-amount">Amount *</label>
+          <input id="spend-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spend-narrative">Narrative</label>
+          <input id="spend-narrative" name="narrative" type="text" class="form-input" placeholder="What did you spend on? (e.g. 2kg Beef)" />
+        </div>
+
+        <div id="spend-active-row" class="form-group hidden">
+          <label class="form-checkbox-row">
+            <input id="spend-is-active" name="is_active" type="checkbox" checked />
+            <span><strong>Active spend</strong> (counts in spending and balances)</span>
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="spend-modal">Cancel</button>
+          <button type="submit" id="spend-submit-btn" class="btn-orange-pill">Record Spend</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var recordedMap = {{ recorded_map_json|safe }};
+  var defaultAcctId = "{% if default_account %}{{ default_account.id }}{% endif %}";
+  var todayIso = "{{ today_iso }}";
+  var currentEditingTxId = null;
+
+  var dateInput = document.getElementById('spend-date');
+  var catInput = document.getElementById('spend-category-input');
+  var catNameEl = document.getElementById('cat-picker-name');
+  var catPathEl = document.getElementById('cat-picker-path');
+  var catClearBtn = document.getElementById('cat-clear-btn');
+  var catMenu = document.getElementById('cat-picker-menu');
+  var catSearchInput = document.getElementById('cat-search-input');
+  var dupWarnBadge = document.getElementById('dup-warn-badge');
+  var catTrigger = document.getElementById('cat-picker-trigger');
+
+  function isCatRecordedOnDate(catId, dStr) {
+    if (!catId || !dStr) return false;
+    var rows = recordedMap[dStr] || [];
+    return rows.some(function (r) {
+      if (currentEditingTxId && Number(r.tx_id) === Number(currentEditingTxId)) return false;
+      return Number(r.cat_id) === Number(catId);
+    });
+  }
+
+  function refreshDuplicateStates() {
+    var dStr = dateInput.value || todayIso;
+    var selectedId = catInput.value;
+    var selectedDup = isCatRecordedOnDate(selectedId, dStr);
+    dupWarnBadge.classList.toggle('hidden', !selectedDup);
+    catTrigger.classList.toggle('has-error', selectedDup);
+
+    document.querySelectorAll('#cat-options-list .cat-option').forEach(function (opt) {
+      var cid = opt.getAttribute('data-cat-id');
+      var isDup = isCatRecordedOnDate(cid, dStr);
+      opt.classList.toggle('is-disabled', isDup);
+      opt.classList.toggle('is-selected', String(cid) === String(selectedId));
+      var badge = opt.querySelector('.dup-item-badge');
+      if (badge) badge.classList.toggle('hidden', !isDup);
+    });
+  }
+
+  function setSelectedCategory(catId) {
+    catInput.value = catId || '';
+    var opt = document.querySelector('#cat-options-list .cat-option[data-cat-id="' + (catId || '') + '"]');
+    if (opt) {
+      catNameEl.textContent = opt.getAttribute('data-cat-name');
+      catPathEl.textContent = opt.getAttribute('data-cat-path');
+    } else {
+      catNameEl.textContent = 'No category (Uncategorised)';
+      catPathEl.textContent = 'Miscellaneous spend without a specific category';
+    }
+    catClearBtn.classList.toggle('hidden', !catId);
+    refreshDuplicateStates();
+  }
+
+  window.toggleCatPicker = function (e) {
+    e.stopPropagation();
+    catMenu.classList.toggle('hidden');
+    if (!catMenu.classList.contains('hidden')) {
+      catSearchInput.value = '';
+      filterCatOptions('');
+      catSearchInput.focus();
+    }
+  };
+
+  window.pickCategory = function (el) {
+    if (el.classList.contains('is-disabled')) return;
+    setSelectedCategory(el.getAttribute('data-cat-id'));
+    catMenu.classList.add('hidden');
+  };
+
+  window.clearCatSelection = function (e) {
+    e.stopPropagation();
+    setSelectedCategory('');
+  };
+
+  function filterCatOptions(term) {
+    var q = term.toLowerCase().trim();
+    var visibleCount = 0;
+    document.querySelectorAll('#cat-options-list .cat-option').forEach(function (opt) {
+      var cid = opt.getAttribute('data-cat-id');
+      if (!cid) {
+        opt.classList.remove('hidden');
+        return;
+      }
+      var name = (opt.getAttribute('data-cat-name') || '').toLowerCase();
+      var path = (opt.getAttribute('data-cat-path') || '').toLowerCase();
+      var match = !q || name.indexOf(q) !== -1 || path.indexOf(q) !== -1;
+      opt.classList.toggle('hidden', !match);
+      if (match) visibleCount++;
+    });
+    document.getElementById('cat-no-results').classList.toggle('hidden', visibleCount > 0);
+  }
+
+  catSearchInput.addEventListener('input', function () {
+    filterCatOptions(catSearchInput.value);
+  });
+
+  dateInput.addEventListener('change', refreshDuplicateStates);
+
+  document.addEventListener('click', function (e) {
+    var picker = document.getElementById('today-cat-picker');
+    if (picker && !picker.contains(e.target)) {
+      catMenu.classList.add('hidden');
+    }
+  });
+
+  window.openAddSpend = function () {
+    currentEditingTxId = null;
+    document.getElementById('spend-modal-title').textContent = 'Add Spend';
+    document.getElementById('spend-submit-btn').textContent = 'Record Spend';
+    document.getElementById('spend-id').value = '';
+    dateInput.value = todayIso;
+    var acctEl = document.getElementById('spend-account');
+    if (acctEl && defaultAcctId) acctEl.value = defaultAcctId;
+    document.getElementById('spend-amount').value = '';
+    document.getElementById('spend-narrative').value = '';
+    document.getElementById('spend-active-row').classList.add('hidden');
+    document.getElementById('spend-is-active').checked = true;
+
+    // Pre-select first unrecorded category for today
+    var firstAvailable = '';
+    var opts = document.querySelectorAll('#cat-options-list .cat-option');
+    for (var i = 0; i < opts.length; i++) {
+      var cid = opts[i].getAttribute('data-cat-id');
+      if (cid && !isCatRecordedOnDate(cid, todayIso)) {
+        firstAvailable = cid;
+        break;
+      }
+    }
+    setSelectedCategory(firstAvailable);
+    catMenu.classList.add('hidden');
+    window.openModal('spend-modal');
+  };
+
+  window.openEditSpend = function (btn) {
+    currentEditingTxId = btn.getAttribute('data-tx-id');
+    document.getElementById('spend-modal-title').textContent = 'Edit Spend';
+    document.getElementById('spend-submit-btn').textContent = 'Save Changes';
+    document.getElementById('spend-id').value = currentEditingTxId;
+    dateInput.value = btn.getAttribute('data-tx-date') || todayIso;
+    var acctEl = document.getElementById('spend-account');
+    if (acctEl) acctEl.value = btn.getAttribute('data-tx-account') || defaultAcctId;
+    document.getElementById('spend-amount').value = btn.getAttribute('data-tx-amount') || '';
+    document.getElementById('spend-narrative').value = btn.getAttribute('data-tx-narrative') || '';
+    document.getElementById('spend-active-row').classList.remove('hidden');
+    document.getElementById('spend-is-active').checked = btn.getAttribute('data-tx-active') === '1';
+
+    setSelectedCategory(btn.getAttribute('data-tx-cat') || '');
+    catMenu.classList.add('hidden');
+    window.openModal('spend-modal');
+  };
+})();
+</script>
+{% endblock %}

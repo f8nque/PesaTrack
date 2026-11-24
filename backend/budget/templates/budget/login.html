@@ -1,0 +1,82 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if mode == 'register' %}Create Account{% else %}Sign In{% endif %} — Tally</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="stylesheet" href="{% static 'budget/style.css' %}">
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-top-bar">
+        <button type="button" class="theme-mini-btn" onclick="toggleAppTheme()" title="Switch Theme">
+          <span data-theme-icon>☀️</span>
+        </button>
+      </div>
+
+      <div class="brand-badge">S</div>
+      <h1 class="login-title">Tally Portal</h1>
+      <p class="login-subtitle">Know what is left before you spend it</p>
+
+      <form method="post" class="login-form">
+        {% csrf_token %}
+        {% if next %}
+          <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <div class="form-group">
+          <label class="form-label" for="id_username">Username</label>
+          <input
+            id="id_username"
+            name="username"
+            value="{{ username }}"
+            class="form-input"
+            placeholder="Enter username"
+            required
+            autocomplete="username"
+            autofocus
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="id_password">Password</label>
+          <input
+            id="id_password"
+            name="password"
+            type="password"
+            class="form-input"
+            placeholder="Enter password"
+            required
+            autocomplete="{% if mode == 'register' %}new-password{% else %}current-password{% endif %}"
+          />
+        </div>
+
+        {% if error %}
+          <p class="login-error">{{ error }}</p>
+        {% endif %}
+
+        <button type="submit" class="btn-orange-pill login-submit">
+          {% if mode == 'register' %}Create Account{% else %}Sign In{% endif %}
+        </button>
+      </form>
+
+      <div class="login-toggle">
+        {% if mode == 'register' %}
+          <a href="{% url 'login' %}" class="toggle-link">Have an account? Sign in</a>
+        {% else %}
+          <a href="{% url 'register' %}" class="toggle-link">New here? Create an account</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <script src="{% static 'budget/app.js' %}"></script>
+</body>
+</html>

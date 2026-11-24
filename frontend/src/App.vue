@@ -33,6 +33,11 @@ const navTabs = [
 const authed = ref(!!localStorage.t)
 // Start with Today's Spends as requested
 const currentTab = ref('Today')
+const mobileOpen = ref(false)
+
+const currentTabLabel = computed(() => {
+  return navTabs.find(t => t.id === currentTab.value)?.label || currentTab.value
+})
 
 // Theme management: 'dark' (default) or 'light'
 const theme = ref(localStorage.theme || 'dark')

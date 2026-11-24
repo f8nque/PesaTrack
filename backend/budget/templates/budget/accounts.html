@@ -1,0 +1,762 @@
+{% extends "budget/base.html" %}
+{% load budget_extras %}
+
+{% block title %}Accounts — Tally{% endblock %}
+
+{% block content %}
+<div class="accounts-page-view">
+  <!-- Header with Quick Action Buttons -->
+  <header class="page-header between">
+    <div>
+      <h1 class="page-title">Bank & Mobile Money Accounts</h1>
+      <p class="page-subtitle">
+        Manage your liquid wallets, bank accounts, savings pots, reconciliations, and transfers.
+      </p>
+    </div>
+
+    <div class="row-actions">
+      <button type="button" class="btn-orange-pill" onclick="openAccountModal()">
+        <span>➕ Add Account</span>
+      </button>
+      <button type="button" class="btn-secondary-pill" onclick="openTransferModal()">
+        <span>🔁 Transfer Money</span>
+      </button>
+      {% if archived_accounts %}
+        <a
+          href="{% url 'accounts' %}{% if not show_archived %}?show_archived=1{% endif %}"
+          class="btn-secondary-pill {% if show_archived %}active{% endif %}"
+          style="text-decoration: none;"
+        >
+          <span>{% if show_archived %}Hide Archived{% else %}Show Archived ({{ archived_accounts|length }}){% endif %}</span>
+        </a>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Top Executive Summary Cards -->
+  <section class="account-kpi-grid">
+    <div class="account-kpi-card kpi-accent">
+      <span class="account-kpi-label">💳 Total Net Worth</span>
+      <span class="account-kpi-val">{{ total_net_worth|money }}</span>
+      <span class="muted" style="font-size: 0.76rem;">All active liquid + savings pots</span>
+    </div>
+
+    <div class="account-kpi-card kpi-green">
+      <span class="account-kpi-label">💧 Liquid Funds</span>
+      <span class="account-kpi-val">{{ total_liquid|money }}</span>
+      <span class="muted" style="font-size: 0.76rem;">Available for immediate spending</span>
+    </div>
+
+    <div class="account-kpi-card kpi-cyan">
+      <span class="account-kpi-label">🔒 Locked in Pots</span>
+      <span class="account-kpi-val">{{ total_pots|money }}</span>
+      <span class="muted" style="font-size: 0.76rem;">M-Shwari & fixed goal savings</span>
+    </div>
+
+    <div class="account-kpi-card {% if low_balance_count > 0 %}kpi-warn{% endif %}">
+      <span class="account-kpi-label">⚠️ Balance Alerts</span>
+      <span class="account-kpi-val">{{ low_balance_count }}</span>
+      <span class="muted" style="font-size: 0.76rem;">
+        {% if low_balance_count > 0 %}Accounts below minimum threshold{% else %}All accounts within safety limits{% endif %}
+      </span>
+    </div>
+  </section>
+
+  {% if not active_accounts and not archived_accounts %}
+    <div class="empty-state">
+      <h3>No accounts found</h3>
+      <p class="muted">Add your primary bank account or M-Pesa wallet to get started.</p>
+      <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openAccountModal()">
+        Add your first account
+      </button>
+    </div>
+  {% else %}
+    <!-- Active Accounts List -->
+    <section class="accounts-grid">
+      {% for account in top_level_active %}
+        <div class="account-card {% if account.is_low_balance %}low-balance{% endif %}">
+          <div class="account-header-row">
+            <div class="account-title-group">
+              <div class="account-avatar">{{ account.kind|kind_icon }}</div>
+              <div class="account-title-text">
+                <h3 class="account-name">
+                  {{ account.name }}
+                  {% if account.is_default %}<span class="badge badge-default">⭐ Default</span>{% endif %}
+                  <span class="badge badge-active">{{ account.kind|kind_name }}</span>
+                  {% if account.is_low_balance %}<span class="badge badge-low-balance">⚠️ Low Balance</span>{% endif %}
+                </h3>
+                <div class="account-subtitle">
+                  {% if account.account_number %}<span>Acc/Till: {{ account.account_number }} &bull;</span>{% endif %}
+                  <span>Opening: {{ account.opening_balance|money }} (as of {{ account.as_of_date|date:"Y-m-d" }})</span>
+                  {% if account.minimum_balance > 0 %}<span>&bull; Min Threshold: {{ account.minimum_balance|money }}</span>{% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div class="row-actions">
+              <a
+                href="{% url 'accounts' %}?insights={{ account.id }}&timeframe=month{% if show_archived %}&show_archived=1{% endif %}"
+                class="btn-action-pill btn-insights"
+                style="text-decoration: none;"
+              >📊 Insights</a>
+              <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ account.id }})">
+                ⚖️ Reconcile
+              </button>
+              <button type="button" class="btn-action-pill btn-transfer" onclick="openTransferModal({{ account.id }})">
+                🔁 Transfer
+              </button>
+            </div>
+          </div>
+
+          {% if account.is_low_balance %}
+            <div class="low-balance-alert-banner">
+              <span>⚠️ Low Balance Warning: Balance of {{ account.balance|money }} is below your minimum threshold of {{ account.minimum_balance|money }}. Top up to avoid failed transactions.</span>
+            </div>
+          {% endif %}
+
+          <div class="account-balance-section">
+            <div class="balance-box">
+              <span class="balance-label">Liquid Balance</span>
+              <span class="balance-amount highlight">{{ account.balance|money }}</span>
+            </div>
+
+            {% if account.pots_list %}
+              <div class="balance-box">
+                <span class="balance-label">Total Balance (With Pots)</span>
+                <span class="balance-amount">{{ account.total_balance|money }}</span>
+              </div>
+            {% endif %}
+
+            <div class="balance-aux-info">
+              {% if account.pots_list %}
+                <span class="aux-tag">
+                  🍯 {{ account.pots_list|length }} Sub-Account{% if account.pots_list|length > 1 %}s{% endif %} / Pots
+                </span>
+              {% endif %}
+              {% if not account.is_default %}
+                <form method="post" action="{% url 'accounts_set_default' account.id %}" style="margin: 0;">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-secondary-pill" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                    Set as Default
+                  </button>
+                </form>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if account.pots_list or not account.is_pot %}
+            <div class="pots-container">
+              <div class="pots-header">
+                <span>Locked Goals & Savings Pots</span>
+                <button type="button" class="link" style="font-size: 0.78rem;" onclick="openAccountModal(null, {{ account.id }}, true)">
+                  ➕ Add Pot
+                </button>
+              </div>
+
+              {% if not account.pots_list %}
+                <div class="muted" style="font-size: 0.8rem; padding: 0.35rem 0;">
+                  No pots under this account. Create one for M-Shwari Lock Savings or goal buckets.
+                </div>
+              {% else %}
+                {% for pot in account.pots_list %}
+                  <div class="pot-row">
+                    <div class="pot-meta">
+                      <span class="pot-icon">🍯</span>
+                      <div>
+                        <span class="pot-name">{{ pot.name }}</span>
+                        <small class="muted"> &bull; {{ pot.kind|kind_name }}</small>
+                        {% if pot.minimum_balance > 0 %}
+                          <div class="muted" style="font-size: 0.75rem;">Min: {{ pot.minimum_balance|money }}</div>
+                        {% endif %}
+                      </div>
+                    </div>
+
+                    <div class="between" style="gap: 1rem;">
+                      <span class="pot-balance">{{ pot.balance|money }}</span>
+                      <div class="row-actions">
+                        <button type="button" class="btn-action-pill" onclick="openTransferModal({{ account.id }}, {{ pot.id }})">
+                          Deposit
+                        </button>
+                        <button type="button" class="btn-action-pill" onclick="openTransferModal({{ pot.id }}, {{ account.id }})">
+                          Withdraw
+                        </button>
+                        <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ pot.id }})">
+                          ⚖️
+                        </button>
+                        <button type="button" class="btn-action-pill" onclick="openAccountModal({{ pot.id }})">
+                          ✏️
+                        </button>
+                        <form method="post" action="{% url 'accounts_delete' pot.id %}" style="margin: 0;" onsubmit="return confirm('Delete this pot and its transactions?');">
+                          {% csrf_token %}
+                          <button type="submit" class="link" style="color: var(--text-danger);">Delete</button>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endif %}
+
+          <div class="account-actions-bar">
+            <button type="button" class="btn-action-pill" onclick="openAccountModal({{ account.id }})">
+              ✏️ Edit Account
+            </button>
+            <form method="post" action="{% url 'accounts_archive' account.id %}" style="margin: 0;" onsubmit="return confirm('Archive account? It will be hidden from new transaction entries while preserving history.');">
+              {% csrf_token %}
+              <button type="submit" class="btn-action-pill">🗄️ Archive / Hide</button>
+            </form>
+            <form method="post" action="{% url 'accounts_delete' account.id %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this account and all associated transactions?');">
+              {% csrf_token %}
+              <button type="submit" class="link" style="color: var(--text-danger);">Delete</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+
+      {% for account in standalone_pots %}
+        <div class="account-card">
+          <div class="account-header-row">
+            <div class="account-title-group">
+              <div class="account-avatar">🍯</div>
+              <div class="account-title-text">
+                <h3 class="account-name">
+                  {{ account.name }}
+                  <span class="badge badge-pot">Savings Pot</span>
+                </h3>
+                <div class="account-subtitle">
+                  <span>Balance: {{ account.balance|money }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ account.id }})">
+                ⚖️ Reconcile
+              </button>
+              <button type="button" class="btn-action-pill" onclick="openAccountModal({{ account.id }})">
+                ✏️ Edit
+              </button>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <!-- Archived Accounts Section -->
+  {% if show_archived and archived_accounts %}
+    <section style="margin-top: 2.5rem;">
+      <h2 style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1rem;">
+        🗄️ Archived Accounts (Hidden from Daily Spends)
+      </h2>
+      <div class="accounts-grid">
+        {% for account in archived_accounts %}
+          <div class="account-card is-archived">
+            <div class="account-header-row">
+              <div class="account-title-group">
+                <div class="account-avatar">{{ account.kind|kind_icon }}</div>
+                <div class="account-title-text">
+                  <h3 class="account-name">
+                    {{ account.name }}
+                    <span class="badge badge-inactive">Archived</span>
+                  </h3>
+                  <div class="account-subtitle">
+                    Past historical transactions are preserved for budget reports.
+                  </div>
+                </div>
+              </div>
+
+              <div class="between" style="gap: 1rem;">
+                <span class="balance-amount">{{ account.balance|money }}</span>
+                <div class="row-actions">
+                  <form method="post" action="{% url 'accounts_unarchive' account.id %}" style="margin: 0;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-orange-pill" style="font-size: 0.8rem; padding: 0.35rem 0.9rem;">
+                      Unarchive / Restore
+                    </button>
+                  </form>
+                  <a
+                    href="{% url 'accounts' %}?insights={{ account.id }}&timeframe=month&show_archived=1"
+                    class="btn-action-pill btn-insights"
+                    style="text-decoration: none;"
+                  >📊 History</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  <!-- 1. ADD / EDIT ACCOUNT MODAL -->
+  <div id="account-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="acct-modal-title" class="modal-title">Add New Account</h3>
+        <button type="button" class="modal-close-btn" data-modal-close="account-modal">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'accounts_save' %}">
+        {% csrf_token %}
+        <input type="hidden" name="id" id="acct-id" value="">
+
+        <div class="form-group">
+          <label class="form-label" for="acct-name">Account Name *</label>
+          <input id="acct-name" name="name" class="form-input" placeholder="e.g. M-Pesa, KCB Checking, Cash Float" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="acct-kind">Account Type *</label>
+          <select id="acct-kind" name="kind" class="form-select">
+            {% for k in account_kinds %}
+              <option value="{{ k.id }}">{{ k.icon }} {{ k.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="acct-number">Account Number / Till / Paybill (Optional)</label>
+          <input id="acct-number" name="account_number" class="form-input" placeholder="e.g. 1234567890 or Till 882910" />
+        </div>
+
+        <div class="row" style="margin: 0 0 1rem 0;">
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="acct-opening">Opening Starting Balance</label>
+            <input id="acct-opening" name="opening_balance" type="number" step="0.01" class="form-input" placeholder="0.00" />
+            <span class="form-hint">Does not distort monthly income analytics.</span>
+          </div>
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="acct-as-of">As-Of Date</label>
+            <input id="acct-as-of" name="as_of_date" type="date" class="form-input" value="{{ today_iso }}" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="acct-min">Minimum Balance Alert Threshold ({{ currency }})</label>
+          <input id="acct-min" name="minimum_balance" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 1000.00 (Leave 0 for no alert)" />
+          <span class="form-hint">Get alerted if your balance drops below this threshold.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="acct-parent">Parent Account (For Sub-Accounts / Pots)</label>
+          <select id="acct-parent" name="parent" class="form-select">
+            <option value="">-- Standalone Account (No Parent) --</option>
+            {% for p in parent_options %}
+              <option value="{{ p.id }}">{{ p.kind|kind_icon }} {{ p.name }} (Parent)</option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Nest locked goals (like M-Shwari Lock) under a main wallet.</span>
+        </div>
+
+        <label class="form-checkbox-row">
+          <input id="acct-is-pot" name="is_pot" type="checkbox" />
+          <span>This is a savings pot / locked goal</span>
+        </label>
+
+        <label class="form-checkbox-row">
+          <input id="acct-is-default" name="is_default" type="checkbox" />
+          <span>Set as primary default account (pre-selected in new spends)</span>
+        </label>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="account-modal">Cancel</button>
+          <button type="submit" id="acct-submit-btn" class="btn-orange-pill">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. TRANSFER MODAL -->
+  <div id="transfer-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">🔁 Transfer Money</h3>
+        <button type="button" class="modal-close-btn" data-modal-close="transfer-modal">&times;</button>
+      </div>
+
+      <form method="post" action="{% url 'accounts_transfer' %}">
+        {% csrf_token %}
+
+        <div class="row" style="margin: 0 0 1rem 0;">
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="xfer-from">From Account (Source) *</label>
+            <select id="xfer-from" name="from_account" class="form-select" required>
+              <option value="" disabled>Select source account</option>
+              {% for a in active_accounts %}
+                <option value="{{ a.id }}">{{ a.name }} ({{ a.balance|money }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="xfer-to">To Account (Destination) *</label>
+            <select id="xfer-to" name="to_account" class="form-select" required>
+              <option value="" disabled>Select destination account</option>
+              {% for a in active_accounts %}
+                <option value="{{ a.id }}">{{ a.name }} ({{ a.balance|money }})</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div class="row" style="margin: 0 0 1rem 0;">
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="xfer-amount">Transfer Amount ({{ currency }}) *</label>
+            <input id="xfer-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
+          </div>
+          <div class="form-group" style="flex: 1; margin: 0;">
+            <label class="form-label" for="xfer-fee">Transaction Fee / Tariff ({{ currency }})</label>
+            <input id="xfer-fee" name="fee" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 13.00 or 25.00" />
+            <span class="form-hint">M-Pesa or bank transfer charge</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="xfer-date">Date</label>
+          <input id="xfer-date" name="transaction_date" type="date" class="form-input" value="{{ today_iso }}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="xfer-narrative">Description / Reference Note</label>
+          <input id="xfer-narrative" name="narrative" class="form-input" placeholder="e.g. Float top-up, M-Pesa to Bank" />
+        </div>
+
+        <div id="xfer-preview" class="transfer-preview-box hidden"></div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="transfer-modal">Cancel</button>
+          <button type="submit" class="btn-orange-pill">Complete Transfer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. RECONCILE MODAL -->
+  <div id="reconcile-modal" class="modal-overlay hidden">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="rec-modal-title" class="modal-title">⚖️ Reconcile Balance</h3>
+        <button type="button" class="modal-close-btn" data-modal-close="reconcile-modal">&times;</button>
+      </div>
+
+      <form method="post" id="reconcile-form" action="">
+        {% csrf_token %}
+        <p class="muted" style="font-size: 0.88rem; margin: 0 0 1rem 0;">
+          Enter the exact actual balance shown in your M-Pesa SMS or banking app. The app generates a silent "Balance Adjustment" transaction for any forgotten pennies or untracked tariffs.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Current App Balance</label>
+          <input id="rec-current" class="form-input" disabled style="opacity: 0.8; font-weight: 600;" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rec-actual">Actual Balance (From Bank App or M-Pesa SMS) *</label>
+          <input id="rec-actual" name="actual_balance" type="number" step="0.01" class="form-input" placeholder="e.g. 5420.50" required />
+        </div>
+
+        <div id="rec-preview" class="transfer-preview-box">
+          <div class="between">
+            <span>Adjustment Difference:</span>
+            <strong id="rec-diff-val">0.00</strong>
+          </div>
+          <div id="rec-diff-hint" style="font-size: 0.8rem; margin-top: 0.2rem;"></div>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label class="form-label" for="rec-date">As-Of Date</label>
+          <input id="rec-date" name="date" type="date" class="form-input" value="{{ today_iso }}" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rec-notes">Reconciliation Note (Optional)</label>
+          <input id="rec-notes" name="notes" class="form-input" placeholder="e.g. Reconciled with KCB mobile banking SMS" />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary-pill" data-modal-close="reconcile-modal">Cancel</button>
+          <button type="submit" class="btn-orange-pill">Confirm & Apply Adjustment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. ACCOUNT INSIGHTS MODAL (Server-Rendered when ?insights=<id>) -->
+  {% if insights_account and insights_data %}
+    <div id="insights-modal" class="modal-overlay">
+      <div class="modal-dialog" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title">📊 {{ insights_account.name }} Insights</h3>
+            <span class="muted" style="font-size: 0.82rem;">
+              {{ insights_account.kind|kind_name }} &bull; Current Balance: {{ insights_account.balance|money }}
+            </span>
+          </div>
+          <a href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}" class="modal-close-btn" style="text-decoration: none;">&times;</a>
+        </div>
+
+        <div class="insights-modal-body">
+          <div class="between" style="border-bottom: 1px solid var(--divider-subtle); padding-bottom: 0.85rem;">
+            <span style="font-weight: 600; font-size: 0.88rem;">Analysis Timeframe:</span>
+            <div class="row-actions">
+              <a
+                href="{% url 'accounts' %}?insights={{ insights_account.id }}&timeframe=month{% if show_archived %}&show_archived=1{% endif %}"
+                class="filter-btn {% if insights_data.timeframe == 'month' %}active{% endif %}"
+                style="text-decoration: none;"
+              >This Month</a>
+              <a
+                href="{% url 'accounts' %}?insights={{ insights_account.id }}&timeframe=all{% if show_archived %}&show_archived=1{% endif %}"
+                class="filter-btn {% if insights_data.timeframe == 'all' %}active{% endif %}"
+                style="text-decoration: none;"
+              >All Time</a>
+            </div>
+          </div>
+
+          <div class="insights-kpi-grid">
+            <div class="insight-kpi-box insight-inflow">
+              <span class="label">🟢 Total Inflow</span>
+              <span class="amount">{{ insights_data.inflow.total|money }}</span>
+              <span class="muted" style="font-size: 0.72rem;">
+                Income: {{ insights_data.inflow.income|money }} | Transfers In: {{ insights_data.inflow.transfers_in|money }}
+              </span>
+            </div>
+
+            <div class="insight-kpi-box insight-outflow">
+              <span class="label">🔴 Total Outflow</span>
+              <span class="amount">{{ insights_data.outflow.total|money }}</span>
+              <span class="muted" style="font-size: 0.72rem;">
+                Expenses: {{ insights_data.outflow.expenses|money }} | Fees: {{ insights_data.outflow.fees|money }}
+              </span>
+            </div>
+
+            <div class="insight-kpi-box insight-net">
+              <span class="label">⚖️ Net Cash Flow</span>
+              <span class="amount {% if insights_data.net_flow >= 0 %}tag-green{% else %}neg{% endif %}">
+                {% if insights_data.net_flow >= 0 %}+{% endif %}{{ insights_data.net_flow|money }}
+              </span>
+              <span class="muted" style="font-size: 0.72rem;">Inflow minus Outflow</span>
+            </div>
+
+            <div class="insight-kpi-box insight-daily">
+              <span class="label">⏱️ Avg. Daily Spend</span>
+              <span class="amount">{{ insights_data.average_daily_spend|money }}</span>
+              <span class="muted" style="font-size: 0.72rem;">Average outflow per active day</span>
+            </div>
+          </div>
+
+          <div class="flow-ratio-bar-wrapper">
+            <div class="between" style="font-size: 0.82rem;">
+              <span class="tag-green">Inflow ({{ insights_data.inflow.total|money }})</span>
+              <span class="neg">Outflow ({{ insights_data.outflow.total|money }})</span>
+            </div>
+            <div class="flow-bar">
+              <div class="flow-bar-segment-in" style="width: {{ insights_data.inflow.pct }}%;"></div>
+              <div class="flow-bar-segment-out" style="width: {{ insights_data.outflow.pct }}%;"></div>
+            </div>
+          </div>
+
+          <div>
+            <h4 style="font-size: 0.95rem; margin: 0 0 0.65rem 0;">🏷️ Biggest Expense Categories for this Wallet</h4>
+            {% if not insights_data.top_categories %}
+              <div class="muted" style="font-size: 0.85rem;">No categorized expenses recorded from this account yet.</div>
+            {% else %}
+              <div class="category-spend-list">
+                {% for cat in insights_data.top_categories %}
+                  <div class="category-spend-row">
+                    <div class="category-spend-header">
+                      <span>
+                        <strong>{{ cat.name }}</strong>
+                        {% if cat.budget_category %}<small class="muted">[{{ cat.budget_category }}]</small>{% endif %}
+                      </span>
+                      <span>{{ cat.total_spent|money }} <span class="muted">({{ cat.percentage }}%)</span></span>
+                    </div>
+                    <div class="category-progress-track">
+                      <div class="category-progress-fill" style="width: {{ cat.percentage }}%;"></div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          </div>
+
+          <div>
+            <div class="between" style="margin-bottom: 0.5rem;">
+              <h4 style="font-size: 0.95rem; margin: 0;">📜 Recent Account Activity</h4>
+              <span class="muted" style="font-size: 0.78rem;">Last 15 records</span>
+            </div>
+
+            {% if not insights_data.recent_qs %}
+              <div class="muted" style="font-size: 0.85rem;">No transactions on record for this account.</div>
+            {% else %}
+              <ul style="display: flex; flex-direction: column; gap: 0.4rem;">
+                {% for t in insights_data.recent_qs %}
+                  <li style="padding: 0.55rem 0.85rem; font-size: 0.86rem;">
+                    <div>
+                      <strong>
+                        {% if t.description %}{{ t.description }}{% elif t.spent_category %}{{ t.spent_category.name }}{% else %}{{ t.kind }}{% endif %}
+                      </strong>
+                      <small class="muted">
+                        &bull; {{ t.transaction_date|date:"Y-m-d" }}
+                        {% if t.kind == 'transfer' %}
+                          {% if t.account_id == insights_account.id %}
+                            (To {{ t.to_account.name|default:"Account" }})
+                          {% else %}
+                            (From {{ t.account.name|default:"Account" }})
+                          {% endif %}
+                        {% endif %}
+                        {% if t.fee and t.fee > 0 %} &bull; Fee: {{ t.fee|money }}{% endif %}
+                      </small>
+                    </div>
+                    {% if t.kind == 'income' or t.kind == 'transfer' and t.to_account_id == insights_account.id or t.kind == 'adjustment' and t.adjustment_type == 'credit' %}
+                      <div class="tag-green">+{{ t.amount|money }}</div>
+                    {% else %}
+                      <div class="neg">-{{ t.amount|money }}</div>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+
+          <div class="modal-footer" style="margin-top: 1rem;">
+            <a href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}" class="btn-secondary-pill" style="text-decoration: none;">Close</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var accountsMeta = {{ accounts_json|safe }};
+  var todayIso = "{{ today_iso }}";
+  var reconcileCurrentBalance = 0;
+
+  // 1. Add / Edit Account Modal
+  window.openAccountModal = function (editId, presetParentId, isPotPreset) {
+    var acct = editId ? accountsMeta[editId] : null;
+    document.getElementById('acct-modal-title').textContent = acct ? 'Edit Account' : 'Add New Account';
+    document.getElementById('acct-submit-btn').textContent = acct ? 'Save Changes' : 'Create Account';
+
+    document.getElementById('acct-id').value = acct ? acct.id : '';
+    document.getElementById('acct-name').value = acct ? acct.name : '';
+    document.getElementById('acct-kind').value = acct ? acct.kind : (presetParentId && accountsMeta[presetParentId] ? accountsMeta[presetParentId].kind : 'bank');
+    document.getElementById('acct-number').value = acct ? acct.account_number : '';
+    document.getElementById('acct-opening').value = acct ? acct.opening_balance : '';
+    document.getElementById('acct-as-of').value = acct ? acct.as_of_date : todayIso;
+    document.getElementById('acct-min').value = acct && acct.minimum_balance > 0 ? acct.minimum_balance : '';
+    document.getElementById('acct-parent').value = acct ? (acct.parent || '') : (presetParentId || '');
+    document.getElementById('acct-is-pot').checked = acct ? Boolean(acct.is_pot) : Boolean(isPotPreset);
+    document.getElementById('acct-is-default').checked = acct ? Boolean(acct.is_default) : false;
+
+    window.openModal('account-modal');
+  };
+
+  // 2. Transfer Modal
+  var xferFrom = document.getElementById('xfer-from');
+  var xferTo = document.getElementById('xfer-to');
+  var xferAmt = document.getElementById('xfer-amount');
+  var xferFee = document.getElementById('xfer-fee');
+  var xferPreview = document.getElementById('xfer-preview');
+
+  function updateTransferPreview() {
+    var fromId = xferFrom.value;
+    var toId = xferTo.value;
+    var amt = Number(xferAmt.value || 0);
+    var fee = Number(xferFee.value || 0);
+    var fromAcct = accountsMeta[fromId];
+    var toAcct = accountsMeta[toId];
+
+    // Disable same destination option
+    Array.prototype.forEach.call(xferTo.options, function (opt) {
+      if (opt.value) opt.disabled = (opt.value === String(fromId));
+    });
+
+    if (fromAcct && toAcct && amt > 0) {
+      var totalDeducted = amt + fee;
+      var rem = fromAcct.balance - totalDeducted;
+      var html = '<div>Deducted from <strong>' + fromAcct.name + '</strong>: <span class="neg"><strong>' + window.formatMoney(totalDeducted) + '</strong></span> <span class="muted">(' + window.formatMoney(amt) + ' transfer + ' + window.formatMoney(fee) + ' tariff)</span></div>';
+      html += '<div>Credited to <strong>' + toAcct.name + '</strong>: <span class="tag-green"><strong>' + window.formatMoney(amt) + '</strong></span></div>';
+      if (fromAcct.minimum_balance > 0 && rem < fromAcct.minimum_balance) {
+        html += '<div class="neg" style="margin-top: 0.35rem; font-weight: 600;">⚠️ Warning: This transfer will reduce ' + fromAcct.name + ' to ' + window.formatMoney(rem) + ', below its minimum threshold of ' + window.formatMoney(fromAcct.minimum_balance) + '.</div>';
+      }
+      xferPreview.innerHTML = html;
+      xferPreview.classList.remove('hidden');
+    } else {
+      xferPreview.classList.add('hidden');
+    }
+  }
+
+  [xferFrom, xferTo, xferAmt, xferFee].forEach(function (el) {
+    el.addEventListener('change', updateTransferPreview);
+    el.addEventListener('input', updateTransferPreview);
+  });
+
+  window.openTransferModal = function (fromId, toId) {
+    xferAmt.value = '';
+    xferFee.value = '';
+    document.getElementById('xfer-date').value = todayIso;
+    document.getElementById('xfer-narrative').value = '';
+
+    if (fromId) {
+      xferFrom.value = String(fromId);
+    } else if (xferFrom.options.length > 1) {
+      xferFrom.selectedIndex = 1;
+    }
+
+    if (toId) {
+      xferTo.value = String(toId);
+    } else {
+      for (var i = 1; i < xferTo.options.length; i++) {
+        if (xferTo.options[i].value !== xferFrom.value) {
+          xferTo.selectedIndex = i;
+          break;
+        }
+      }
+    }
+
+    updateTransferPreview();
+    window.openModal('transfer-modal');
+  };
+
+  // 3. Reconcile Modal
+  var recActual = document.getElementById('rec-actual');
+  var recDiffVal = document.getElementById('rec-diff-val');
+  var recDiffHint = document.getElementById('rec-diff-hint');
+
+  function updateReconcilePreview() {
+    var actual = Number(recActual.value || 0);
+    var diff = Number((actual - reconcileCurrentBalance).toFixed(2));
+    recDiffVal.textContent = (diff > 0 ? '+' : '') + window.formatMoney(diff);
+    recDiffVal.className = diff < 0 ? 'neg' : (diff > 0 ? 'tag-green' : '');
+
+    if (diff < 0) {
+      recDiffHint.innerHTML = '<span>📉 Deficit: A silent debit of ' + window.formatMoney(Math.abs(diff)) + ' will be recorded to match your actual balance.</span>';
+    } else if (diff > 0) {
+      recDiffHint.innerHTML = '<span>📈 Surplus: A silent credit of ' + window.formatMoney(diff) + ' will be recorded to match your actual balance.</span>';
+    } else {
+      recDiffHint.innerHTML = '<span class="tag-green">✅ Balances match perfectly! No adjustment transaction will be recorded.</span>';
+    }
+  }
+
+  recActual.addEventListener('input', updateReconcilePreview);
+
+  window.openReconcileModal = function (acctId) {
+    var acct = accountsMeta[acctId];
+    if (!acct) return;
+    reconcileCurrentBalance = Number(acct.balance || 0);
+    document.getElementById('rec-modal-title').textContent = '⚖️ Reconcile Balance: ' + acct.name;
+    document.getElementById('reconcile-form').action = '/accounts/' + acct.id + '/reconcile/';
+    document.getElementById('rec-current').value = window.formatMoney(reconcileCurrentBalance);
+    recActual.value = reconcileCurrentBalance.toFixed(2);
+    document.getElementById('rec-date').value = todayIso;
+    document.getElementById('rec-notes').value = '';
+    updateReconcilePreview();
+    window.openModal('reconcile-modal');
+  };
+})();
+</script>
+{% endblock %}

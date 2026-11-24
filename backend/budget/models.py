@@ -20,7 +20,7 @@ class Account(models.Model):
     ]
     user = models.ForeignKey(U, on_delete=models.CASCADE)
     name = models.CharField(max_length=60)
-    kind = models.CharField(max_length=20, choices=KINDS, default='bank')
+    kind = models.CharField(max_length=20, choices=KINDS, default='mpesa')
     account_number = models.CharField(max_length=50, blank=True, default='', help_text="e.g. Account number, Till, or Paybill")
     opening_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     as_of_date = models.DateField(default=timezone.localdate, help_text="Opening balance as-of date")
@@ -116,7 +116,7 @@ class BudgetCategory(models.Model):
     user = models.ForeignKey(U, on_delete=models.CASCADE)
     grouping = models.ForeignKey(BudgetGroupCategory, related_name='budget_categories', on_delete=models.CASCADE)
     name = models.CharField(max_length=80)
-    category_type = models.CharField(max_length=20, choices=KINDS, default='needs')
+    category_type = models.CharField(max_length=20, choices=KINDS, default='wants')
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

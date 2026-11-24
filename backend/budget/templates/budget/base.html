@@ -1,0 +1,98 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Tally{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function () {
+      var t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="stylesheet" href="{% static 'budget/style.css' %}">
+</head>
+<body data-currency="{{ currency|default:'KES' }}">
+  <div class="app-container">
+    <!-- Mobile Topbar -->
+    <header class="mobile-topbar">
+      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Open menu">&#9776;</button>
+      <div class="mobile-brand">
+        <div class="brand-avatar-sm">S</div>
+        <span class="mobile-brand-title">Tally</span>
+        {% for item in nav_tabs %}
+          {% if item.id == active_tab %}
+            <span class="mobile-tab-badge">{{ item.label }}</span>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <button type="button" class="mobile-theme-btn" onclick="toggleAppTheme()" aria-label="Toggle theme">
+        <span data-theme-icon>☀️</span>
+      </button>
+    </header>
+
+    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+
+    <!-- Left Side Panel Navigation -->
+    <aside id="app-sidebar" class="sidebar">
+      <div class="sidebar-brand">
+        <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1;">
+          <div class="brand-avatar">S</div>
+          <div class="brand-text">
+            <span class="brand-title">Tally Portal</span>
+          </div>
+        </div>
+        <button id="mobile-close-btn" class="mobile-close-btn" type="button" aria-label="Close menu">&times;</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        {% for item in nav_tabs %}
+          <a href="{% url item.url_name %}" class="nav-item {% if active_tab == item.id %}active{% endif %}">
+            <span class="nav-label">{{ item.label }}</span>
+          </a>
+        {% endfor %}
+      </nav>
+
+      <div class="sidebar-footer">
+        <button type="button" class="theme-toggle-btn" onclick="toggleAppTheme()">
+          <span class="theme-icon" data-theme-icon>☀️</span>
+          <span class="theme-text" data-theme-text>Light Mode</span>
+        </button>
+
+        <div class="footer-row">
+          <div class="version-text">
+            Budget Management v1.0
+            {% if request.user.is_authenticated %}
+              &bull; {{ request.user.username }}
+            {% endif %}
+          </div>
+          <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+            {% csrf_token %}
+            <button type="submit" class="sign-out-btn">Sign out</button>
+          </form>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      {% if messages %}
+        <div class="flash-messages">
+          {% for message in messages %}
+            <div class="flash-alert flash-{{ message.tags|default:'info' }}">
+              <span>{{ message }}</span>
+              <button type="button" class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <script src="{% static 'budget/app.js' %}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
