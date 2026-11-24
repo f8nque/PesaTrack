@@ -12,6 +12,22 @@
     })();
   </script>
   <link rel="stylesheet" href="{% static 'budget/style.css' %}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['selector', '[data-theme="dark"]'],
+      corePlugins: {
+        preflight: false,
+      },
+      theme: {
+        extend: {
+          colors: {
+            brand: '#ff6b00',
+          },
+        },
+      },
+    };
+  </script>
 </head>
 <body data-currency="{{ currency|default:'KES' }}">
   <div class="app-container">
