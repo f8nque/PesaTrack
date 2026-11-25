@@ -6,8 +6,8 @@
 {% block content %}
 <div class="space-y-4">
   <!-- Top Header -->
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
+  <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+    <div class="min-w-0">
       <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Budget Management</h1>
       <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Display organized by <span class="font-semibold text-sky-600 dark:text-sky-400">Budget Grouping</span> (Priority 1-10) with
@@ -15,14 +15,14 @@
       </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2.5">
+    <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2.5 w-full sm:w-auto min-w-0">
       {% if budgets %}
-        <form method="get" action="{% url 'budget' %}" class="m-0 inline-flex items-center">
+        <form method="get" action="{% url 'budget' %}" class="m-0 w-full sm:w-auto min-w-0 inline-flex items-center">
           <select
             name="budget"
             onchange="this.form.submit()"
             aria-label="Select Budget"
-            class="rounded-full border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#16202c] px-4 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500 cursor-pointer"
+            class="w-full sm:w-auto max-w-full min-w-0 truncate rounded-full border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#16202c] px-4 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500 cursor-pointer"
           >
             {% for b in budgets %}
               <option value="{{ b.id }}" class="bg-white dark:bg-[#16202c] text-slate-900 dark:text-slate-50" {% if current_budget and b.id == current_budget.id %}selected{% endif %}>
@@ -36,7 +36,7 @@
       <button
         type="button"
         onclick="openCreateBudgetModal()"
-        class="inline-flex items-center justify-center gap-1.5 rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+        class="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
       >
         + Create Budget
       </button>
@@ -57,45 +57,45 @@
     </div>
   {% elif current_budget %}
     <!-- Active Budget Banner -->
-    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3.5 shadow-sm">
-      <div>
-        <h2 class="m-0 mb-0.5 text-lg font-bold text-slate-900 dark:text-slate-50">{{ current_budget.name }}</h2>
-        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
+    <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3.5 shadow-sm">
+      <div class="min-w-0">
+        <h2 class="m-0 mb-0.5 text-lg font-bold text-slate-900 dark:text-slate-50 break-words">{{ current_budget.name }}</h2>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400 break-words">
           <span>{{ current_budget.start_date|date:"M j, Y" }} &mdash; {{ current_budget.end_date|date:"M j, Y" }}</span>
           {% if current_budget.description %} &bull; {{ current_budget.description }}{% endif %}
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
         <button
           type="button"
           onclick="openEditBudgetModal()"
-          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+          class="flex-1 sm:flex-initial inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
         >Edit Budget</button>
         <button
           type="button"
           onclick="openAddItemModal()"
-          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
+          class="flex-1 sm:flex-initial inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
         >+ Add Budget Item</button>
       </div>
     </div>
 
     <!-- The Two Core Values & Budget Metrics Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-      <div class="flex flex-col rounded-[14px] border border-orange-500/45 bg-white dark:bg-[#16202c] p-4 shadow-[0_4px_15px_rgba(255,107,0,0.08)]">
+      <div class="min-w-0 flex flex-col rounded-[14px] border border-orange-500/45 bg-white dark:bg-[#16202c] p-4 shadow-[0_4px_15px_rgba(255,107,0,0.08)]">
         <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">1. Inputted Allocated Budget</span>
-        <div class="mb-0.5 text-2xl font-bold text-orange-600 dark:text-[#ff6b00]">{{ current_budget.allocated_amount|money }}</div>
+        <div class="mb-0.5 text-xl sm:text-2xl font-bold text-orange-600 dark:text-[#ff6b00] break-words">{{ current_budget.allocated_amount|money }}</div>
         <span class="text-xs text-slate-400 dark:text-slate-500">Target ceiling amount you inputted</span>
       </div>
 
-      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+      <div class="min-w-0 flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
         <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">2. Cumulated Budget Items</span>
-        <div class="mb-0.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ current_budget.total_item_planned|money }}</div>
+        <div class="mb-0.5 text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 break-words">{{ current_budget.total_item_planned|money }}</div>
         <span class="text-xs text-slate-400 dark:text-slate-500">Computed sum of items planned below</span>
       </div>
 
-      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+      <div class="min-w-0 flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
         <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Unallocated Difference</span>
-        <div class="mb-0.5 text-2xl font-bold {% if current_budget.unallocated_amount < 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">
+        <div class="mb-0.5 text-xl sm:text-2xl font-bold break-words {% if current_budget.unallocated_amount < 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">
           {{ current_budget.unallocated_amount|money }}
         </div>
         <span class="text-xs text-slate-400 dark:text-slate-500">
@@ -103,18 +103,18 @@
         </span>
       </div>
 
-      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+      <div class="min-w-0 flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
         <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Actual Spent in Period</span>
-        <div class="mb-0.5 text-2xl font-bold text-slate-900 dark:text-slate-50">{{ actual_spent_period|money }}</div>
+        <div class="mb-0.5 text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-50 break-words">{{ actual_spent_period|money }}</div>
         <span class="text-xs text-slate-400 dark:text-slate-500">Recorded expenses in timeframe</span>
       </div>
     </div>
 
     <!-- Budget Display Section -->
     <div class="flex flex-col gap-3.5">
-      <div class="flex flex-wrap items-baseline justify-between gap-2">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 sm:gap-2">
         <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Budget Items Breakdown</h2>
-        <span class="text-sm text-slate-600 dark:text-slate-400">Ordered by Grouping Priority (1: Highest &rarr; 10: Lowest)</span>
+        <span class="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Ordered by Grouping Priority (1: Highest &rarr; 10: Lowest)</span>
       </div>
 
       {% if not grouped_items %}
@@ -132,20 +132,20 @@
         <div class="flex flex-col gap-3.5">
           {% for grp in grouped_items %}
             <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-hidden shadow-sm">
-              <div class="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50 dark:bg-white/[0.03] px-4 py-2.5 border-b border-slate-200 dark:border-[#233144]">
-                <div class="flex items-center gap-2.5">
-                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border {% if grp.priority <= 2 %}bg-red-500/15 text-red-500 dark:text-red-400 border-red-500/35{% elif grp.priority <= 5 %}bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/35{% else %}bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/35{% endif %}">
+              <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-2 bg-slate-50 dark:bg-white/[0.03] px-3.5 sm:px-4 py-2.5 border-b border-slate-200 dark:border-[#233144]">
+                <div class="flex flex-wrap items-center gap-2 min-w-0">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border shrink-0 {% if grp.priority <= 2 %}bg-red-500/15 text-red-500 dark:text-red-400 border-red-500/35{% elif grp.priority <= 5 %}bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/35{% else %}bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/35{% endif %}">
                     Priority {{ grp.priority }}
                   </span>
-                  <h3 class="m-0 text-base font-bold text-slate-900 dark:text-slate-50">{{ grp.name }}</h3>
+                  <h3 class="m-0 text-base font-bold text-slate-900 dark:text-slate-50 break-words">{{ grp.name }}</h3>
                 </div>
-                <div class="flex gap-4 text-sm text-slate-600 dark:text-slate-400">
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600 dark:text-slate-400">
                   <span>Planned: <strong class="text-slate-900 dark:text-slate-100">{{ grp.total_planned|money }}</strong></span>
                   <span>Actual: <strong class="text-emerald-600 dark:text-emerald-400">{{ grp.total_actual|money }}</strong></span>
                 </div>
               </div>
 
-              <div class="flex flex-col gap-1.5 px-3 py-2.5">
+              <div class="flex flex-col gap-1.5 px-2.5 sm:px-3 py-2.5">
                 <div class="hidden lg:grid lg:grid-cols-[minmax(0,2fr)_auto_auto_minmax(0,1.5fr)_minmax(0,1.6fr)_auto] gap-3 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-white/[0.06]">
                   <div>Budget Category</div>
                   <div class="w-24">Type</div>
@@ -156,41 +156,45 @@
                 </div>
 
                 {% for item in grp.items %}
-                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_auto_auto_minmax(0,1.5fr)_minmax(0,1.6fr)_auto] items-center gap-2.5 lg:gap-3 rounded-[12px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_auto_auto_minmax(0,1.5fr)_minmax(0,1.6fr)_auto] items-center gap-2 lg:gap-3 rounded-[12px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3 sm:px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors">
                     <div class="min-w-0">
                       <h4 class="m-0 text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50 truncate">{{ item.budget_category_name }}</h4>
                       <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Item #{{ item.id }}</div>
                     </div>
 
-                    <div class="lg:w-24">
+                    <div class="min-w-0 lg:w-24">
                       <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border capitalize whitespace-nowrap {% if item.category_type == 'needs' or item.category_type == 'savings' %}bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35{% else %}bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/35{% endif %}">
                         {{ item.category_type }}
                       </span>
                     </div>
 
-                    <div class="sm:text-right lg:w-28">
+                    <div class="min-w-0 flex items-baseline gap-1.5 lg:block lg:text-right lg:w-28">
+                      <span class="text-xs font-medium text-slate-500 dark:text-slate-400 lg:hidden">Planned:</span>
                       <span class="text-base font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ item.amount|money }}</span>
                     </div>
 
                     <div class="min-w-0">
-                      <div class="text-sm mb-1">
-                        <span class="{% if item.is_over %}text-red-600 dark:text-red-400 font-semibold{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ item.actual_spent|money }}</span>
-                        <small class="ml-1 text-slate-400 dark:text-slate-500">({{ item.pct }}%)</small>
+                      <div class="flex items-baseline justify-between lg:block text-sm mb-1">
+                        <span class="text-xs font-medium text-slate-500 dark:text-slate-400 lg:hidden">Actual</span>
+                        <div>
+                          <span class="{% if item.is_over %}text-red-600 dark:text-red-400 font-semibold{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ item.actual_spent|money }}</span>
+                          <small class="ml-1 text-slate-400 dark:text-slate-500">({{ item.pct }}%)</small>
+                        </div>
                       </div>
                       <div class="h-1.5 w-full overflow-hidden rounded border border-slate-200 dark:border-[#233144] bg-slate-100 dark:bg-[#0f1622]">
                         <div class="h-full {% if item.is_over %}bg-red-600 dark:bg-red-400{% else %}bg-orange-600 dark:bg-[#ff6b00]{% endif %}" style="width: {{ item.pct }}%;"></div>
                       </div>
                     </div>
 
-                    <div class="min-w-0">
+                    <div class="min-w-0 break-words">
                       {% if item.reason %}
-                        <span class="inline-block rounded bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">{{ item.reason }}</span>
+                        <span class="inline-block max-w-full rounded bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300 break-words">{{ item.reason }}</span>
                       {% else %}
                         <span class="text-xs italic text-slate-400 dark:text-slate-500">No update reason</span>
                       {% endif %}
                     </div>
 
-                    <div class="sm:col-span-2 lg:col-span-1 lg:w-36 flex items-center justify-end gap-1.5">
+                    <div class="sm:col-span-2 lg:col-span-1 lg:w-36 flex items-center justify-end gap-1.5 pt-2 sm:pt-0 border-t border-slate-100 dark:border-white/[0.06] sm:border-0">
                       <button
                         type="button"
                         class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
@@ -238,13 +242,13 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-1.5">
+          <div class="min-w-0 flex flex-col gap-1.5">
             <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-start">Start Date *</label>
-            <input id="budget-start" name="start_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
+            <input id="budget-start" name="start_date" type="date" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
           </div>
-          <div class="flex flex-col gap-1.5">
+          <div class="min-w-0 flex flex-col gap-1.5">
             <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-end">End Date *</label>
-            <input id="budget-end" name="end_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
+            <input id="budget-end" name="end_date" type="date" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
           </div>
         </div>
 
@@ -275,9 +279,9 @@
         <input type="hidden" name="id" id="item-id" value="">
         <input type="hidden" name="budget" value="{% if current_budget %}{{ current_budget.id }}{% endif %}">
 
-        <div class="flex flex-col gap-1.5">
+        <div class="min-w-0 flex flex-col gap-1.5">
           <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="item-bcat">Linked Budget Category *</label>
-          <select id="item-bcat" name="budget_category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
+          <select id="item-bcat" name="budget_category" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
             <option value="" disabled>Select Budget Category</option>
             {% for c in budget_categories %}
               <option value="{{ c.id }}">{{ c.name }} ({{ c.grouping.name }} &bull; Priority: {{ c.grouping.priority }})</option>

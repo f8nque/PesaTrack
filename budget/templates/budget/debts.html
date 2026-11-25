@@ -5,26 +5,26 @@
 
 {% block content %}
 <div class="space-y-4">
-  <header class="flex flex-wrap items-center justify-between gap-3">
-    <div>
+  <header class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+    <div class="min-w-0">
       <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Debts &amp; Credit Management</h1>
       <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Register debtor accounts &amp; credits, record repayment transactions, and analyze borrowing vs payments by year.
       </p>
     </div>
 
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
       <button
         type="button"
         onclick="openModal('debtor-account-modal')"
-        class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+        class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
       >
         <span>&#129534; Register Debtor Account</span>
       </button>
       {% if current_tab != 'credits' %}
         <a
           href="{% url 'debts' %}"
-          class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2.5 text-sm font-semibold text-white no-underline transition-colors"
+          class="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2.5 text-sm font-semibold text-white no-underline transition-colors"
         >
           <span>&#10133; Register Credit</span>
         </a>
@@ -33,56 +33,62 @@
   </header>
 
   <!-- Sub-navigation Tabs -->
-  <div class="inline-flex flex-wrap max-w-full overflow-x-auto gap-1.5 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-1 shadow-sm">
+  <div class="flex flex-col sm:inline-flex sm:flex-row w-full sm:w-auto max-w-full gap-1 rounded-2xl sm:rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-1.5 sm:p-1 shadow-sm">
     <a
       href="{% url 'debts' %}"
-      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'credits' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+      class="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 whitespace-nowrap rounded-xl sm:rounded-full px-3.5 py-2 sm:py-1.5 text-sm no-underline transition-colors {% if current_tab == 'credits' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
     >
-      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'credits' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">1</span>
-      Credit Registration
-      <span class="text-xs opacity-80">({{ debts|length }})</span>
+      <span class="inline-flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-full text-[0.72rem] font-bold {% if current_tab == 'credits' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">1</span>
+        <span class="truncate">Credit Registration</span>
+      </span>
+      <span class="text-xs opacity-80 shrink-0">({{ debts|length }})</span>
     </a>
     <a
       href="{% url 'debts_payments' %}"
-      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'payments' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+      class="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 whitespace-nowrap rounded-xl sm:rounded-full px-3.5 py-2 sm:py-1.5 text-sm no-underline transition-colors {% if current_tab == 'payments' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
     >
-      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'payments' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">2</span>
-      Payments &amp; Repayments
-      <span class="text-xs opacity-80">({{ repayments|length }})</span>
+      <span class="inline-flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-full text-[0.72rem] font-bold {% if current_tab == 'payments' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">2</span>
+        <span class="truncate">Payments &amp; Repayments</span>
+      </span>
+      <span class="text-xs opacity-80 shrink-0">({{ repayments|length }})</span>
     </a>
     <a
       href="{% url 'debts_analysis' %}"
-      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'analysis' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+      class="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2 whitespace-nowrap rounded-xl sm:rounded-full px-3.5 py-2 sm:py-1.5 text-sm no-underline transition-colors {% if current_tab == 'analysis' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
     >
-      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'analysis' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">3</span>
-      Debt Analysis
-      <span class="text-xs opacity-80">({{ analysis.selected_year }})</span>
+      <span class="inline-flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-full text-[0.72rem] font-bold {% if current_tab == 'analysis' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">3</span>
+        <span class="truncate">Debt Analysis</span>
+      </span>
+      <span class="text-xs opacity-80 shrink-0">({{ analysis.selected_year }})</span>
     </a>
   </div>
 
   <!-- Executive KPI Summary -->
   <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+    <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm transition-all hover:-translate-y-0.5">
       <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#129534; Total Borrowed</span>
-      <span class="text-2xl font-bold tracking-tight text-orange-600 dark:text-[#ff6b00]">{{ total_borrowed|money }}</span>
+      <span class="text-xl sm:text-2xl font-bold tracking-tight text-orange-600 dark:text-[#ff6b00] break-words">{{ total_borrowed|money }}</span>
       <span class="text-xs text-slate-500 dark:text-slate-400">Across {{ debts|length }} registered credit{{ debts|length|pluralize }}</span>
     </div>
 
-    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+    <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm transition-all hover:-translate-y-0.5">
       <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9989; Total Repaid</span>
-      <span class="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{{ total_repaid|money }}</span>
+      <span class="text-xl sm:text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400 break-words">{{ total_repaid|money }}</span>
       <span class="text-xs text-slate-500 dark:text-slate-400">Active repayment transactions</span>
     </div>
 
-    <div class="flex flex-col gap-1 rounded-[14px] border bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5 {% if total_outstanding > 0 %}border-red-500/40{% else %}border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00]{% endif %}">
+    <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm transition-all hover:-translate-y-0.5 {% if total_outstanding > 0 %}border-red-500/40{% else %}border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00]{% endif %}">
       <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9203; Outstanding Balance</span>
-      <span class="text-2xl font-bold tracking-tight {% if total_outstanding > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">{{ total_outstanding|money }}</span>
+      <span class="text-xl sm:text-2xl font-bold tracking-tight break-words {% if total_outstanding > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">{{ total_outstanding|money }}</span>
       <span class="text-xs text-slate-500 dark:text-slate-400">{{ active_credits_count }} active unpaid credit{{ active_credits_count|pluralize }}</span>
     </div>
 
-    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+    <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm transition-all hover:-translate-y-0.5">
       <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128210; Debtor Accounts</span>
-      <span class="text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400">{{ debtor_accounts|length }}</span>
+      <span class="text-xl sm:text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400 break-words">{{ debtor_accounts|length }}</span>
       <span class="text-xs text-slate-500 dark:text-slate-400">Accounts with category Debtors</span>
     </div>
   </section>
@@ -112,9 +118,9 @@
         <input type="hidden" name="id" id="credit-id" value="">
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-account-select">Existing Debtor Account (Category: Debtors)</label>
-            <select name="account" id="credit-account-select" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+            <select name="account" id="credit-account-select" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
               <option value="">-- Select existing debtor or type new below --</option>
               {% for da in debtor_accounts %}
                 <option value="{{ da.id }}">{{ da.name }}{% if da.account_number %} ({{ da.account_number }}){% endif %}</option>
@@ -122,13 +128,13 @@
             </select>
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-debtor-name">Or Check / Register Debtor Account Name</label>
             <input
               type="text"
               name="debtor_account_name"
               id="credit-debtor-name"
-              class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500"
+              class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500"
               list="debtor-accounts-datalist"
               placeholder="e.g. KCB Loan, M-Shwari, John Doe"
             >
@@ -142,45 +148,45 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-reg-date">Registration Date *</label>
-            <input type="date" name="registration_date" id="credit-reg-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
+            <input type="date" name="registration_date" id="credit-reg-date" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-principal">Amount Borrowed *</label>
-            <input type="number" name="principal" id="credit-principal" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
+            <input type="number" name="principal" id="credit-principal" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-service-date">Service Date (Due Date)</label>
-            <input type="date" name="service_date" id="credit-service-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+            <input type="date" name="service_date" id="credit-service-date" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
           </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-name">Credit / Loan Reference (optional)</label>
-            <input type="text" name="name" id="credit-name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Defaults to Debtor Account name">
+            <input type="text" name="name" id="credit-name" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Defaults to Debtor Account name">
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-debtor-number">Debtor Acc / Phone # (if new)</label>
-            <input type="text" name="debtor_account_number" id="credit-debtor-number" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
+            <input type="text" name="debtor_account_number" id="credit-debtor-number" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
           </div>
 
-          <div class="flex flex-col gap-1">
+          <div class="min-w-0 flex flex-col gap-1">
             <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-min-payment">Min Payment / Interest %</label>
             <div class="grid grid-cols-2 gap-2">
-              <input type="number" name="min_payment" id="credit-min-payment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Min pay">
-              <input type="number" name="interest_rate" id="credit-interest-rate" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Rate %">
+              <input type="number" name="min_payment" id="credit-min-payment" class="w-full min-w-0 rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Min pay">
+              <input type="number" name="interest_rate" id="credit-interest-rate" class="w-full min-w-0 rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Rate %">
             </div>
           </div>
         </div>
 
-        <div class="flex flex-col gap-1">
+        <div class="min-w-0 flex flex-col gap-1">
           <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-budget-category">Budget Category (Optional — for Budget Plan)</label>
-          <select name="budget_category" id="credit-budget-category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <select name="budget_category" id="credit-budget-category" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="">-- Not linked to a Budget Category --</option>
             {% for bc in budget_categories %}
               <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
@@ -189,16 +195,16 @@
           <span class="text-xs text-slate-400 dark:text-slate-500">Link repayments for this credit to a Budget Category so you can allocate &amp; track them in your Budget Plan.</span>
         </div>
 
-        <div class="flex flex-col gap-1">
+        <div class="min-w-0 flex flex-col gap-1">
           <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-comment">Comment</label>
-          <textarea name="comment" id="credit-comment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" rows="2" placeholder="Loan purpose, terms, or notes..."></textarea>
+          <textarea name="comment" id="credit-comment" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" rows="2" placeholder="Loan purpose, terms, or notes..."></textarea>
         </div>
 
         <div class="flex justify-end gap-3 pt-1">
           <button
             type="submit"
             id="credit-submit-btn"
-            class="inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
+            class="w-full sm:w-auto inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 sm:py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
           >Register Credit</button>
         </div>
       </form>
@@ -220,11 +226,11 @@
 
         <div class="flex flex-col gap-3">
           {% for d in debts %}
-            <div class="rounded-[14px] border bg-white dark:bg-[#16202c] p-4 shadow-sm {% if d.is_overdue %}border-red-500/45{% else %}border-slate-200 dark:border-[#233144]{% endif %}">
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
+            <div class="rounded-[14px] border bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm {% if d.is_overdue %}border-red-500/45{% else %}border-slate-200 dark:border-[#233144]{% endif %}">
+              <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-start justify-between gap-2.5 sm:gap-3">
+                <div class="min-w-0 flex-1">
                   <div class="flex flex-wrap items-center gap-2">
-                    <strong class="text-base font-bold text-slate-900 dark:text-slate-50">{{ d.name }}</strong>
+                    <strong class="text-base font-bold text-slate-900 dark:text-slate-50 break-words">{{ d.name }}</strong>
                     {% if d.account %}
                       <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">&#129534; {{ d.account.name }}</span>
                     {% endif %}
@@ -237,18 +243,18 @@
                       <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/35 animate-pulse">&#9888;&#65039; Past Service Date</span>
                     {% endif %}
                   </div>
-                  <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <div class="mt-1 text-xs text-slate-500 dark:text-slate-400 break-words">
                     Registered: <strong class="text-slate-700 dark:text-slate-200">{{ d.registration_date|date:"Y-m-d" }}</strong>
                     &bull; Service Date: <strong class="text-slate-700 dark:text-slate-200">{% if d.service_date %}{{ d.service_date|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</strong>
                     {% if d.min_payment > 0 %}&bull; Min Payment: {{ d.min_payment|money }}{% endif %}
                     {% if d.interest_rate > 0 %}&bull; Rate: {{ d.interest_rate }}%{% endif %}
                   </div>
                   {% if d.comment %}
-                    <p class="mt-1 mb-0 text-sm text-slate-600 dark:text-slate-400">{{ d.comment }}</p>
+                    <p class="mt-1 mb-0 text-sm text-slate-600 dark:text-slate-400 break-words">{{ d.comment }}</p>
                   {% endif %}
                 </div>
 
-                <div class="text-right">
+                <div class="text-left sm:text-right shrink-0">
                   <div class="text-base font-bold text-slate-900 dark:text-slate-50">
                     {{ d.balance|money }}
                     <span class="text-sm font-normal text-slate-500 dark:text-slate-400">left</span>
@@ -263,19 +269,19 @@
                 <div class="h-full bg-[#ea580c] dark:bg-[#ff6b00]" style="width: {{ d.paid_pct }}%;"></div>
               </div>
 
-              <div class="flex flex-wrap items-center justify-between gap-2.5">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
                 {% if payable_accounts and d.balance > 0 %}
-                  <form method="post" action="{% url 'debts_repay' d.id %}" class="debt-repay-inline-form m-0 flex-1 flex flex-wrap items-center gap-2" data-debt-remaining="{{ d.remaining_str }}">
+                  <form method="post" action="{% url 'debts_repay' d.id %}" class="debt-repay-inline-form m-0 w-full lg:flex-1 min-w-0 grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2" data-debt-remaining="{{ d.remaining_str }}">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{% url 'debts' %}">
-                    <select name="account" required class="flex-1 min-w-[190px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+                    <select name="account" required class="w-full sm:flex-1 min-w-0 sm:min-w-[190px] max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
                       {% for a in payable_accounts %}
                         <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
                           Pay from {{ a.name }} ({{ a.balance|money }})
                         </option>
                       {% endfor %}
                     </select>
-                    <input type="date" name="transaction_date" value="{{ today_iso }}" required class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+                    <input type="date" name="transaction_date" value="{{ today_iso }}" required class="w-full sm:w-auto min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
                     <input
                       name="amount"
                       type="number"
@@ -284,11 +290,11 @@
                       max="{{ d.remaining_str }}"
                       placeholder="Repayment amount (max {{ d.remaining_str }})"
                       required
-                      class="flex-1 min-w-[160px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
+                      class="w-full sm:flex-1 min-w-0 sm:min-w-[150px] max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
                     >
                     <button
                       type="submit"
-                      class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
+                      class="w-full sm:w-auto inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2.5 sm:py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
                     >Record Payment</button>
                   </form>
                 {% elif d.balance <= 0 %}
@@ -297,7 +303,7 @@
                   <span class="text-sm text-slate-500 dark:text-slate-400">&#9888;&#65039; No account with available balance to pay from</span>
                 {% endif %}
 
-                <div class="flex flex-wrap items-center gap-1.5">
+                <div class="flex flex-wrap items-center justify-end gap-1.5 w-full lg:w-auto pt-2 lg:pt-0 border-t border-slate-100 dark:border-white/[0.06] lg:border-0">
                   <a
                     href="{% url 'debts_payments' %}?debt={{ d.id }}"
                     class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
@@ -350,9 +356,9 @@
           <input type="hidden" name="next" value="{% url 'debts_payments' %}">
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-debt">Credit / Debtor *</label>
-              <select name="debt" id="pay-debt" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
+              <select name="debt" id="pay-debt" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
                 <option value="">-- Select credit --</option>
                 {% for d in unpaid_debts %}
                   <option
@@ -367,9 +373,9 @@
               </select>
             </div>
 
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-account">Pay From Account *</label>
-              <select name="account" id="pay-account" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
+              <select name="account" id="pay-account" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
                 {% for a in payable_accounts %}
                   <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
                     {{ a.name }} ({{ a.balance|money }})
@@ -378,22 +384,22 @@
               </select>
             </div>
 
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-amount">Repayment Amount *</label>
-              <input type="number" name="amount" id="pay-amount" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
-              <div id="pay-amount-hint" class="text-xs text-slate-400 dark:text-slate-500"></div>
+              <input type="number" name="amount" id="pay-amount" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
+              <div id="pay-amount-hint" class="text-xs text-slate-400 dark:text-slate-500 break-words"></div>
             </div>
           </div>
 
           <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-date">Payment Date *</label>
-              <input type="date" name="transaction_date" id="pay-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
+              <input type="date" name="transaction_date" id="pay-date" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
             </div>
 
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-budget-category">Budget Category (Optional)</label>
-              <select name="budget_category" id="pay-budget-category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+              <select name="budget_category" id="pay-budget-category" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
                 <option value="">-- Not linked to Budget Plan --</option>
                 {% for bc in budget_categories %}
                   <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
@@ -401,16 +407,16 @@
               </select>
             </div>
 
-            <div class="flex flex-col gap-1">
+            <div class="min-w-0 flex flex-col gap-1">
               <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-comment">Comment / Reference</label>
-              <input type="text" name="comment" id="pay-comment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. M-Pesa ref, partial installment">
+              <input type="text" name="comment" id="pay-comment" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. M-Pesa ref, partial installment">
             </div>
           </div>
 
           <div class="flex justify-end pt-1">
             <button
               type="submit"
-              class="inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
+              class="w-full sm:w-auto inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 sm:py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
             >Save Repayment</button>
           </div>
         </form>
@@ -426,39 +432,41 @@
         </div>
       </div>
 
-      <form method="get" action="{% url 'debts_payments' %}" class="m-0 flex flex-wrap items-center gap-2">
-        <select name="debtor" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+      <form method="get" action="{% url 'debts_payments' %}" class="m-0 grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2">
+        <select name="debtor" class="w-full sm:w-auto min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
           <option value="">All Debtors</option>
           {% for da in debtor_accounts %}
             <option value="{{ da.id }}" {% if filter_debtor_id == da.id %}selected{% endif %}>{{ da.name }}</option>
           {% endfor %}
         </select>
-        <select name="debt" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+        <select name="debt" class="w-full sm:w-auto min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
           <option value="">All Credits</option>
           {% for d in debts %}
             <option value="{{ d.id }}" {% if filter_debt_id == d.id %}selected{% endif %}>{{ d.name }}</option>
           {% endfor %}
         </select>
-        <select name="year" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+        <select name="year" class="w-full sm:w-auto min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 sm:py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
           <option value="">All Years</option>
           {% for yr in analysis.available_years %}
             <option value="{{ yr }}" {% if filter_year == yr %}selected{% endif %}>{{ yr }}</option>
           {% endfor %}
         </select>
-        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300 px-1">
-          <input type="checkbox" name="show_voided" value="1" class="w-4 h-4 accent-[#ff6b00]" {% if show_voided %}checked{% endif %}>
-          <span>Show voided</span>
-        </label>
-        <button
-          type="submit"
-          class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
-        >Filter</button>
-        {% if filter_debt_id or filter_debtor_id or filter_year or show_voided %}
-          <a
-            href="{% url 'debts_payments' %}"
-            class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
-          >Reset</a>
-        {% endif %}
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300 px-1">
+            <input type="checkbox" name="show_voided" value="1" class="w-4 h-4 accent-[#ff6b00]" {% if show_voided %}checked{% endif %}>
+            <span>Show voided</span>
+          </label>
+          <button
+            type="submit"
+            class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+          >Filter</button>
+          {% if filter_debt_id or filter_debtor_id or filter_year or show_voided %}
+            <a
+              href="{% url 'debts_payments' %}"
+              class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+            >Reset</a>
+          {% endif %}
+        </div>
       </form>
 
       {% if not repayments %}
@@ -467,7 +475,7 @@
           <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Record a repayment above to track debt paydown history.</p>
         </div>
       {% else %}
-        <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
+        <div class="max-w-full rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
           <table class="w-full border-collapse text-sm">
             <thead>
               <tr>
@@ -545,24 +553,24 @@
 
   <!-- TAB 3: DEBT ANALYSIS (DEBTORS VS MONTHS) -->
   {% else %}
-    <section class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div>
+    <section class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-3.5 sm:p-4 shadow-sm space-y-4">
+      <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-3">
+        <div class="min-w-0">
           <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Debt Analysis ({{ analysis.selected_year }})</h2>
           <p class="mt-0.5 mb-0 text-sm text-slate-600 dark:text-slate-400">
             Monthly breakdown of loans taken and repayments made per debtor for {{ analysis.selected_year }}.
           </p>
         </div>
 
-        <form method="get" action="{% url 'debts_analysis' %}" class="m-0 flex flex-wrap items-center gap-2">
+        <form method="get" action="{% url 'debts_analysis' %}" class="m-0 flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="analysis-year">Year:</label>
-          <select name="year" id="analysis-year" onchange="this.form.submit()" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <select name="year" id="analysis-year" onchange="this.form.submit()" class="min-w-0 rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             {% for yr in analysis.available_years %}
               <option value="{{ yr }}" {% if yr == analysis.selected_year %}selected{% endif %}>{{ yr }}</option>
             {% endfor %}
           </select>
 
-          <select name="metric" onchange="this.form.submit()" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <select name="metric" onchange="this.form.submit()" class="flex-1 sm:flex-initial min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="both" {% if analysis_metric == 'both' %}selected{% endif %}>Loans Taken &amp; Payments</option>
             <option value="taken" {% if analysis_metric == 'taken' %}selected{% endif %}>Loans Taken Only</option>
             <option value="paid" {% if analysis_metric == 'paid' %}selected{% endif %}>Payments Only</option>
@@ -571,21 +579,21 @@
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div class="flex flex-col gap-1 rounded-[14px] border border-red-500/40 bg-slate-50 dark:bg-[#0f1622] p-3.5">
+        <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-red-500/40 bg-slate-50 dark:bg-[#0f1622] p-3.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128229; Loans Taken ({{ analysis.selected_year }})</span>
-          <span class="text-2xl font-bold text-red-600 dark:text-red-400">{{ analysis.grand_year_taken|money }}</span>
+          <span class="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 break-words">{{ analysis.grand_year_taken|money }}</span>
         </div>
-        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+        <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128184; Payments ({{ analysis.selected_year }})</span>
-          <span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ analysis.grand_year_paid|money }}</span>
+          <span class="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 break-words">{{ analysis.grand_year_paid|money }}</span>
         </div>
-        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+        <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128202; Net Change ({{ analysis.selected_year }})</span>
-          <span class="text-2xl font-bold text-sky-600 dark:text-sky-400">{{ analysis.grand_net_change|money }}</span>
+          <span class="text-xl sm:text-2xl font-bold text-sky-600 dark:text-sky-400 break-words">{{ analysis.grand_net_change|money }}</span>
         </div>
-        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+        <div class="min-w-0 flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
           <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9878;&#65039; All-Time Balance</span>
-          <span class="text-2xl font-bold text-orange-600 dark:text-[#ff6b00]">{{ analysis.grand_balance|money }}</span>
+          <span class="text-xl sm:text-2xl font-bold text-orange-600 dark:text-[#ff6b00] break-words">{{ analysis.grand_balance|money }}</span>
         </div>
       </div>
     </section>
@@ -596,11 +604,11 @@
         <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Register a debtor account and credit first to see the monthly matrix.</p>
       </div>
     {% else %}
-      <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
+      <div class="max-w-full rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="sticky left-0 z-[3] bg-slate-50 dark:bg-[#1a2433] px-3.5 py-3 border-b border-r border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Debtor</th>
+              <th class="sticky left-0 z-[3] max-w-[125px] sm:max-w-[200px] truncate bg-slate-50 dark:bg-[#1a2433] px-3 sm:px-3.5 py-3 border-b border-r border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Debtor</th>
               {% for m in analysis.months %}
                 <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums" title="{{ m.full }}">{{ m.short }}</th>
               {% endfor %}
@@ -611,7 +619,7 @@
           <tbody>
             {% for r in analysis.rows %}
               <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
-                <td class="sticky left-0 z-[2] bg-white dark:bg-[#16202c] px-3.5 py-2.5 border-b border-r border-slate-100 dark:border-white/[0.06] font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ r.label }}</td>
+                <td class="sticky left-0 z-[2] max-w-[125px] sm:max-w-[200px] truncate bg-white dark:bg-[#16202c] px-3 sm:px-3.5 py-2.5 border-b border-r border-slate-100 dark:border-white/[0.06] font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap" title="{{ r.label }}">{{ r.label }}</td>
                 {% for cell in r.months %}
                   <td class="px-3.5 py-2.5 border-b border-slate-100 dark:border-white/[0.06] text-right tabular-nums whitespace-nowrap">
                     {% if analysis_metric == 'taken' %}
@@ -652,7 +660,7 @@
           </tbody>
           <tfoot>
             <tr>
-              <th class="sticky left-0 z-[3] bg-slate-50 dark:bg-[#1a2433] px-3.5 py-3 border-t-2 border-r border-slate-200 dark:border-[#233144] text-left font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Total</th>
+              <th class="sticky left-0 z-[3] max-w-[125px] sm:max-w-[200px] truncate bg-slate-50 dark:bg-[#1a2433] px-3 sm:px-3.5 py-3 border-t-2 border-r border-slate-200 dark:border-[#233144] text-left font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Total</th>
               {% for mt in analysis.monthly_totals %}
                 <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-t-2 border-slate-200 dark:border-[#233144] text-right tabular-nums font-bold whitespace-nowrap">
                   {% if analysis_metric == 'taken' %}
@@ -698,13 +706,13 @@
       <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Checks whether an account with category <strong>Debtors</strong> already exists for this name; otherwise registers a new one.
       </p>
-      <div class="flex flex-col gap-1.5">
+      <div class="min-w-0 flex flex-col gap-1.5">
         <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="modal-debtor-name">Debtor Account Name *</label>
-        <input type="text" name="name" id="modal-debtor-name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. KCB Loan, Fuliza, Jane Doe" required>
+        <input type="text" name="name" id="modal-debtor-name" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. KCB Loan, Fuliza, Jane Doe" required>
       </div>
-      <div class="flex flex-col gap-1.5">
+      <div class="min-w-0 flex flex-col gap-1.5">
         <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="modal-debtor-number">Account / Phone Number (optional)</label>
-        <input type="text" name="account_number" id="modal-debtor-number" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
+        <input type="text" name="account_number" id="modal-debtor-number" class="w-full min-w-0 max-w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
       </div>
       <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
         <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="debtor-account-modal">Cancel</button>
