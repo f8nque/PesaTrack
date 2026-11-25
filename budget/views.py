@@ -140,12 +140,40 @@ def logout_view(request):
 # Today's Spends (Landing Page)
 # ---------------------------------------------------------------------------
 
+def _format_fee_narrative(tx):
+    """Build a clear, descriptive narrative for a transaction fee shown in Today's Spends."""
+    from_name = tx.account.name if tx.account else 'Account'
+    desc = (tx.description or '').strip()
+    if tx.kind == 'transfer':
+        to_name = tx.to_account.name if tx.to_account else 'Account'
+        route = f"{from_name} → {to_name}"
+        generic_defaults = {
+            'account transfer',
+            f'transfer: {from_name} -> {to_name}'.lower(),
+            f'transfer: {from_name} → {to_name}'.lower(),
+        }
+        if desc and desc.lower() not in generic_defaults:
+            return f"Transfer fee ({route}): {desc}"
+        return f"Transfer fee: {route}"
+    base = desc or (tx.spent_category.name if tx.spent_category else 'Expense')
+    return f"Transaction fee ({from_name}): {base}"
+
+
 @login_required
 def today_view(request):
     today = timezone.localdate()
     all_today_txs = list(
-        Transaction.objects.filter(user=request.user, transaction_date=today)
-        .select_related('account', 'spent_category__budget_category__grouping')
+        Transaction.objects.filter(
+            user=request.user,
+            transaction_date=today,
+            kind__in=('expense', 'transfer'),
+        )
+        .select_related(
+            'account',
+            'to_account',
+            'spent_category__budget_category__grouping',
+            'fee_budget_category__grouping',
+        )
         .order_by('-id')
     )
     categories = list(
@@ -164,6 +192,61 @@ def today_view(request):
     funded_accounts = [a for a in active_accounts if Decimal(a.balance or 0) > 0]
     default_account = next((a for a in funded_accounts if a.is_default), funded_accounts[0] if funded_accounts else None)
 
+    all_spend_entries = []
+    for tx in all_today_txs:
+        acct_name = tx.account.name if tx.account else ''
+        if tx.kind == 'expense':
+            cat_name = tx.spent_category.name if tx.spent_category else 'Uncategorised'
+            cat_path = (
+                tx.spent_category.full_path
+                if (tx.spent_category and tx.spent_category.full_path != cat_name)
+                else ''
+            )
+            all_spend_entries.append({
+                'id': tx.id,
+                'is_fee': False,
+                'parent_kind': tx.kind,
+                'narrative': tx.description or cat_name,
+                'raw_description': tx.description,
+                'account_id': tx.account_id,
+                'account_name': acct_name,
+                'subtitle_extra': '',
+                'spent_category_id': tx.spent_category_id,
+                'category_name': cat_name,
+                'category_path': cat_path,
+                'transaction_date': tx.transaction_date,
+                'amount': tx.amount,
+                'is_active': tx.is_active,
+            })
+        if tx.fee and tx.fee > 0:
+            if tx.fee_budget_category:
+                fee_cat_name = tx.fee_budget_category.name
+                fee_cat_path = f"{tx.fee_budget_category.grouping.name} > {tx.fee_budget_category.name}"
+            else:
+                fee_cat_name = 'Transfer Fee' if tx.kind == 'transfer' else 'Transaction Fee'
+                fee_cat_path = 'Account Transfer Tariff' if tx.kind == 'transfer' else 'Transaction Tariff'
+            subtitle_extra = (
+                f"Transfer {tx.amount:,.2f} → {tx.to_account.name}"
+                if tx.kind == 'transfer' and tx.to_account
+                else f"Fee on {tx.kind}"
+            )
+            all_spend_entries.append({
+                'id': tx.id,
+                'is_fee': True,
+                'parent_kind': tx.kind,
+                'narrative': _format_fee_narrative(tx),
+                'raw_description': tx.description,
+                'account_id': tx.account_id,
+                'account_name': acct_name,
+                'subtitle_extra': subtitle_extra,
+                'spent_category_id': None,
+                'category_name': fee_cat_name,
+                'category_path': fee_cat_path,
+                'transaction_date': tx.transaction_date,
+                'amount': tx.fee,
+                'is_active': tx.is_active,
+            })
+
     search_query = (request.GET.get('q') or '').strip()
     selected_cat_raw = (request.GET.get('category') or '').strip()
     show_deactivated = request.GET.get('show_deactivated') == '1'
@@ -171,24 +254,28 @@ def today_view(request):
     selected_cat_id = int(selected_cat_raw) if selected_cat_raw.isdigit() else None
 
     filtered_txs = []
-    for tx in all_today_txs:
-        if not show_deactivated and not tx.is_active:
+    for entry in all_spend_entries:
+        if not show_deactivated and not entry['is_active']:
             continue
-        if selected_cat_id and tx.spent_category_id != selected_cat_id:
+        if selected_cat_id and entry['spent_category_id'] != selected_cat_id:
             continue
         if search_query:
             q = search_query.lower()
-            desc = (tx.description or '').lower()
-            cat_name = (tx.spent_category.name if tx.spent_category else '').lower()
-            cat_path = (tx.spent_category.full_path if tx.spent_category else '').lower()
-            if q not in desc and q not in cat_name and q not in cat_path:
+            haystack = ' '.join([
+                entry['narrative'] or '',
+                entry['category_name'] or '',
+                entry['category_path'] or '',
+                entry['account_name'] or '',
+                entry['subtitle_extra'] or '',
+            ]).lower()
+            if q not in haystack:
                 continue
-        filtered_txs.append(tx)
+        filtered_txs.append(entry)
 
-    active_count = sum(1 for tx in all_today_txs if tx.is_active)
-    deactivated_count = len(all_today_txs) - active_count
+    active_count = sum(1 for entry in all_spend_entries if entry['is_active'])
+    deactivated_count = len(all_spend_entries) - active_count
     today_total = sum(
-        (tx.amount for tx in all_today_txs if tx.is_active and tx.kind == 'expense'),
+        (entry['amount'] for entry in all_spend_entries if entry['is_active']),
         Decimal('0')
     )
 
@@ -231,7 +318,7 @@ def today_view(request):
         'selected_cat_id': selected_cat_id,
         'show_deactivated': show_deactivated,
         'stats': {
-            'total': len(all_today_txs),
+            'total': len(all_spend_entries),
             'active': active_count,
             'deactivated': deactivated_count,
         },
@@ -872,7 +959,7 @@ def accounts_transfer(request):
     from_id = request.POST.get('from_account')
     to_id = request.POST.get('to_account')
     tx_date = _parse_date(request.POST.get('transaction_date'))
-    narrative = (request.POST.get('narrative') or '').strip() or 'Account transfer'
+    raw_narrative = (request.POST.get('narrative') or '').strip()
 
     if not from_id or not to_id:
         messages.error(request, 'Please select both source and destination accounts.')
@@ -883,6 +970,8 @@ def accounts_transfer(request):
     if from_acct.pk == to_acct.pk:
         messages.error(request, 'Pick two different accounts for a transfer.')
         return redirect('accounts')
+
+    narrative = raw_narrative or f'Transfer: {from_acct.name} → {to_acct.name}'
 
     try:
         amount = _parse_decimal(request.POST.get('amount'), 'transfer amount')

@@ -1336,3 +1336,73 @@ class SetupCategoryExcelTests(TestCase):
         )
         res_corrupt = self.client.post('/setup/categories/upload/', {'excel_file': corrupt_xlsx}, follow=True)
         self.assertContains(res_corrupt, 'Invalid Excel (.xlsx) file')
+
+
+class TodayTransferFeeTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='xferuser', password='password123')
+        self.client.force_login(self.user)
+        self.today = timezone.localdate()
+
+    def test_transfer_fees_captured_in_todays_spends_with_narrative(self):
+        bank = Account.objects.create(
+            user=self.user, name='KCB Bank', kind='bank', opening_balance=Decimal('10000.00')
+        )
+        mpesa = Account.objects.create(
+            user=self.user, name='M-Pesa', kind='mpesa', opening_balance=Decimal('1000.00')
+        )
+        group = BudgetGroupCategory.objects.create(user=self.user, name='CHARGES', priority=1)
+        charges_bcat = BudgetCategory.objects.create(
+            user=self.user, grouping=group, name='Transfer Charges', category_type='needs'
+        )
+
+        # 1. Transfer with fee and custom narrative
+        self.client.post('/accounts/transfer/', {
+            'from_account': bank.id,
+            'to_account': mpesa.id,
+            'amount': '2000.00',
+            'fee': '25.00',
+            'fee_budget_category': charges_bcat.id,
+            'transaction_date': str(self.today),
+            'narrative': 'Float top-up',
+        })
+
+        # 2. Transfer with fee and blank narrative -> gets descriptive default narrative
+        self.client.post('/accounts/transfer/', {
+            'from_account': bank.id,
+            'to_account': mpesa.id,
+            'amount': '500.00',
+            'fee': '13.00',
+            'transaction_date': str(self.today),
+        })
+
+        # 3. Free transfer (fee=0) and income should NOT appear in Today's Spends
+        self.client.post('/accounts/transfer/', {
+            'from_account': bank.id,
+            'to_account': mpesa.id,
+            'amount': '400.00',
+            'fee': '0',
+            'transaction_date': str(self.today),
+            'narrative': 'Zero fee transfer',
+        })
+        self.client.post('/transactions/add/', {
+            'kind': 'income',
+            'account': bank.id,
+            'amount': '5000.00',
+            'transaction_date': str(self.today),
+            'description': 'Side income',
+        })
+
+        res = self.client.get('/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.context['today_total'], Decimal('38.00'))
+        self.assertEqual(res.context['stats']['active'], 2)
+        self.assertContains(res, 'Transfer fee (KCB Bank → M-Pesa): Float top-up')
+        self.assertContains(res, 'Transfer fee: KCB Bank → M-Pesa')
+        self.assertContains(res, 'Transfer Charges')
+        self.assertNotContains(res, 'Zero fee transfer')
+        self.assertNotContains(res, 'Side income')
+
+        # Dashboard today_spent also captures the 25 + 13 = 38 fees
+        summary = compute_summary(self.user, self.today.strftime('%Y-%m'))
+        self.assertEqual(summary['today_spent'], 38.0)

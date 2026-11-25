@@ -110,6 +110,11 @@ def compute_summary(user, month_str=None):
 
     fees = float(inm.exclude(fee=0).aggregate(t=Sum('fee'))['t'] or 0)
     left = income - spent - debt_paid
+    today_exp_amt = f(tx_qs.filter(kind='expense', transaction_date=today))
+    today_fee_amt = float(
+        tx_qs.filter(kind__in=('expense', 'transfer'), fee__gt=0, transaction_date=today)
+        .aggregate(t=Sum('fee'))['t'] or 0
+    )
 
     active_accounts = Account.objects.filter(user=user, is_archived=False).exclude(kind='debtors')
     liquid_balance = float(sum(a.balance for a in active_accounts.filter(is_pot=False)))
@@ -127,7 +132,7 @@ def compute_summary(user, month_str=None):
         'planned': total_planned,
         'unallocated': allocated_amount - total_planned,
         'savings_rate': round(left / income * 100, 1) if income else 0,
-        'today_spent': f(tx_qs.filter(kind='expense', transaction_date=today)),
+        'today_spent': today_exp_amt + today_fee_amt,
         'budget': budget_items,
         'budget_id': active_budget.id if active_budget else None,
         'budget_name': active_budget.name if active_budget else None,

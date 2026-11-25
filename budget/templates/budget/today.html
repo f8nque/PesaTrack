@@ -115,26 +115,21 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.8fr)_auto_auto_auto_auto] items-center gap-2.5 lg:gap-4 rounded-[12px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3 shadow-sm hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors {% if not tx.is_active %}opacity-55{% endif %}">
           <div class="min-w-0">
             <h4 class="m-0 text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50 truncate {% if not tx.is_active %}line-through{% endif %}">
-              {% if tx.description %}
-                {{ tx.description }}
-              {% elif tx.spent_category %}
-                {{ tx.spent_category.name }}
-              {% else %}
-                Uncategorised
-              {% endif %}
+              {{ tx.narrative }}
             </h4>
             <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
               <span class="font-semibold text-emerald-600 dark:text-emerald-400">TX-{{ tx.id }}</span>
-              {% if tx.account %} &bull; {{ tx.account.name }}{% endif %}
+              {% if tx.account_name %} &bull; {{ tx.account_name }}{% endif %}
+              {% if tx.subtitle_extra %} &bull; {{ tx.subtitle_extra }}{% endif %}
             </div>
           </div>
 
           <div class="min-w-0">
             <div class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-              {% if tx.spent_category %}{{ tx.spent_category.name }}{% else %}Uncategorised{% endif %}
+              {{ tx.category_name }}
             </div>
-            {% if tx.spent_category and tx.spent_category.full_path != tx.spent_category.name %}
-              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate">{{ tx.spent_category.full_path }}</div>
+            {% if tx.category_path %}
+              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate">{{ tx.category_path }}</div>
             {% endif %}
           </div>
 
@@ -153,44 +148,56 @@
           </div>
 
           <div class="sm:col-span-2 lg:col-span-1 lg:w-60 flex items-center justify-end gap-1.5">
-            <button
-              type="button"
-              class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
-              data-tx-id="{{ tx.id }}"
-              data-tx-date="{{ tx.transaction_date|date:'Y-m-d' }}"
-              data-tx-cat="{{ tx.spent_category_id|default:'' }}"
-              data-tx-account="{{ tx.account_id|default:'' }}"
-              data-tx-amount="{{ tx.amount }}"
-              data-tx-narrative="{{ tx.description|escapejs }}"
-              data-tx-active="{% if tx.is_active %}1{% else %}0{% endif %}"
-              onclick="openEditSpend(this)"
-            >
-              Edit
-            </button>
-
-            <form method="post" action="{% url 'transactions_toggle' tx.id %}" class="m-0 inline-flex items-center">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'today' %}">
-              <button
-                type="submit"
-                class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors {% if tx.is_active %}border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400{% else %}border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] text-slate-600 dark:text-slate-300{% endif %}"
+            {% if tx.is_fee %}
+              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35 whitespace-nowrap">
+                {% if tx.parent_kind == 'transfer' %}Transfer Fee{% else %}Tx Fee{% endif %}
+              </span>
+              <a
+                href="{% url 'transactions' %}?month={{ today|date:'Y-m' }}"
+                class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 no-underline transition-colors"
               >
-                {% if tx.is_active %}Deactivate{% else %}Activate{% endif %}
+                Transactions
+              </a>
+            {% else %}
+              <button
+                type="button"
+                class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
+                data-tx-id="{{ tx.id }}"
+                data-tx-date="{{ tx.transaction_date|date:'Y-m-d' }}"
+                data-tx-cat="{{ tx.spent_category_id|default:'' }}"
+                data-tx-account="{{ tx.account_id|default:'' }}"
+                data-tx-amount="{{ tx.amount }}"
+                data-tx-narrative="{{ tx.raw_description|escapejs }}"
+                data-tx-active="{% if tx.is_active %}1{% else %}0{% endif %}"
+                onclick="openEditSpend(this)"
+              >
+                Edit
               </button>
-            </form>
 
-            <form
-              method="post"
-              action="{% url 'transactions_delete' tx.id %}"
-              class="m-0 inline-flex items-center"
-              onsubmit="return confirm('Are you sure you want to permanently delete this transaction?');"
-            >
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'today' %}">
-              <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">
-                Delete
-              </button>
-            </form>
+              <form method="post" action="{% url 'transactions_toggle' tx.id %}" class="m-0 inline-flex items-center">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'today' %}">
+                <button
+                  type="submit"
+                  class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors {% if tx.is_active %}border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400{% else %}border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] text-slate-600 dark:text-slate-300{% endif %}"
+                >
+                  {% if tx.is_active %}Deactivate{% else %}Activate{% endif %}
+                </button>
+              </form>
+
+              <form
+                method="post"
+                action="{% url 'transactions_delete' tx.id %}"
+                class="m-0 inline-flex items-center"
+                onsubmit="return confirm('Are you sure you want to permanently delete this transaction?');"
+              >
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'today' %}">
+                <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">
+                  Delete
+                </button>
+              </form>
+            {% endif %}
           </div>
         </div>
       {% endfor %}
