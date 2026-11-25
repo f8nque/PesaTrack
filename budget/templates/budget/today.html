@@ -4,54 +4,58 @@
 {% block title %}Today's Spends — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="today-spends-page">
+<div class="space-y-5">
   <!-- Page Header -->
-  <div class="page-header between-header">
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h1 class="page-title">Today's Spends</h1>
-      <p class="page-subtitle">
-        Recorded transactions for <span class="tag-orange">{{ today|date:"D, M j, Y" }}</span>
-        — Total Active: <span class="tag-green">{{ today_total|money }}</span>
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Today's Spends</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
+        Recorded transactions for <span class="font-semibold text-orange-600 dark:text-[#ff6b00]">{{ today|date:"D, M j, Y" }}</span>
+        — Total Active: <span class="font-semibold text-emerald-600 dark:text-emerald-400">{{ today_total|money }}</span>
       </p>
     </div>
-    <button type="button" class="btn-orange-pill" onclick="openAddSpend()">
+    <button
+      type="button"
+      onclick="openAddSpend()"
+      class="inline-flex items-center justify-center gap-1.5 rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+    >
       + Add Spend
     </button>
   </div>
 
   <!-- Search & Category Filter Form -->
-  <form method="get" action="{% url 'today' %}" id="today-filter-form">
-    <div class="search-pill-container" style="margin-bottom: 1rem;">
+  <form method="get" action="{% url 'today' %}" id="today-filter-form" class="m-0 space-y-3">
+    <div class="w-full">
       <input
         name="q"
         value="{{ search_query }}"
         type="text"
-        class="search-pill-input"
+        class="w-full rounded-full border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-5 py-3 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500 dark:focus:border-[#ff6b00]"
         placeholder="Search by narrative, description, spent category, or path..."
       />
     </div>
 
-    <div class="filters-bar">
-      <div class="stat-pill">
-        <span>Active Spends:</span>
-        <strong class="highlight">{{ stats.active }}</strong>
+    <div class="flex flex-wrap items-center gap-2.5">
+      <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3.5 py-1.5 text-xs shadow-sm">
+        <span class="text-slate-600 dark:text-slate-400">Active Spends:</span>
+        <strong class="font-bold text-orange-600 dark:text-[#ff6b00]">{{ stats.active }}</strong>
       </div>
-      <div class="stat-pill">
-        <span>Total Spent Today:</span>
-        <strong class="accent-green">{{ today_total|money }}</strong>
+      <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3.5 py-1.5 text-xs shadow-sm">
+        <span class="text-slate-600 dark:text-slate-400">Total Spent Today:</span>
+        <strong class="font-bold text-emerald-600 dark:text-emerald-400">{{ today_total|money }}</strong>
       </div>
 
-      <div class="filter-pill-select">
-        <label class="filter-label" for="filter-cat-select">Category:</label>
+      <div class="inline-flex items-center gap-1.5 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] pl-3.5 pr-2 py-1 shadow-sm">
+        <label class="text-[0.72rem] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500" for="filter-cat-select">Category:</label>
         <select
           id="filter-cat-select"
           name="category"
-          class="category-select-pill"
+          class="bg-white dark:bg-[#16202c] border-0 rounded-full text-xs font-medium text-slate-900 dark:text-slate-50 cursor-pointer py-1 pl-1 pr-2 max-w-[220px] outline-none"
           onchange="document.getElementById('today-filter-form').submit()"
         >
-          <option value="">All Categories ({{ categories|length }})</option>
+          <option value="" class="bg-white dark:bg-[#16202c] text-slate-900 dark:text-slate-50">All Categories ({{ categories|length }})</option>
           {% for c in categories %}
-            <option value="{{ c.id }}" {% if selected_cat_id == c.id %}selected{% endif %}>
+            <option value="{{ c.id }}" class="bg-white dark:bg-[#16202c] text-slate-900 dark:text-slate-50" {% if selected_cat_id == c.id %}selected{% endif %}>
               {{ c.full_path|default:c.name }}
             </option>
           {% endfor %}
@@ -62,12 +66,18 @@
         <input type="hidden" name="show_deactivated" value="1">
       {% endif %}
 
-      <button type="submit" class="btn-secondary-pill" style="padding: 0.35rem 0.95rem; font-size: 0.82rem;">
+      <button
+        type="submit"
+        class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+      >
         Filter
       </button>
 
       {% if search_query or selected_cat_id %}
-        <a href="{% url 'today' %}{% if show_deactivated %}?show_deactivated=1{% endif %}" class="btn-secondary-pill" style="text-decoration: none; padding: 0.35rem 0.95rem; font-size: 0.82rem;">
+        <a
+          href="{% url 'today' %}{% if show_deactivated %}?show_deactivated=1{% endif %}"
+          class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+        >
           Clear
         </a>
       {% endif %}
@@ -75,8 +85,7 @@
       {% if stats.deactivated > 0 %}
         <a
           href="{% url 'today' %}?{% if search_query %}q={{ search_query|urlencode }}&{% endif %}{% if selected_cat_id %}category={{ selected_cat_id }}&{% endif %}{% if not show_deactivated %}show_deactivated=1{% endif %}"
-          class="filter-btn {% if show_deactivated %}active{% endif %}"
-          style="margin-left: auto; text-decoration: none;"
+          class="ml-auto rounded-full px-3.5 py-1.5 text-xs font-medium no-underline border transition-colors {% if show_deactivated %}bg-orange-500/15 text-orange-600 dark:text-[#ff6b00] border-orange-500/40{% else %}border-slate-300 dark:border-[#26354a] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1c2736]{% endif %}"
         >
           {% if show_deactivated %}Hide Deactivated{% else %}Show Deactivated ({{ stats.deactivated }}){% endif %}
         </a>
@@ -86,26 +95,26 @@
 
   <!-- Empty State -->
   {% if not transactions %}
-    <div class="empty-state">
-      <h3>No active spends recorded for today</h3>
-      <p class="muted">Click "+ Add Spend" above to record your first transaction for today.</p>
+    <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-10 text-center">
+      <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No active spends recorded for today</h3>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Click "+ Add Spend" above to record your first transaction for today.</p>
     </div>
   {% else %}
     <!-- Clean High-Volume Data List Container -->
-    <div class="data-list-container">
-      <div class="data-list-header tx-cols">
+    <div class="flex flex-col gap-2">
+      <div class="hidden lg:grid lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.8fr)_auto_auto_auto_auto] gap-4 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-white/[0.06]">
         <div>Narrative / Note</div>
         <div>Spent Category / Path</div>
-        <div>Date</div>
-        <div class="text-right">Amount</div>
-        <div class="text-center">Status</div>
-        <div class="text-right">Actions</div>
+        <div class="w-24">Date</div>
+        <div class="w-28 text-right">Amount</div>
+        <div class="w-24 text-center">Status</div>
+        <div class="w-60 text-right">Actions</div>
       </div>
 
       {% for tx in transactions %}
-        <div class="data-row tx-cols {% if not tx.is_active %}is-inactive{% endif %}">
-          <div>
-            <h4 class="row-title">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2.2fr)_minmax(0,1.8fr)_auto_auto_auto_auto] items-center gap-2.5 lg:gap-4 rounded-[12px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3 shadow-sm hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors {% if not tx.is_active %}opacity-55{% endif %}">
+          <div class="min-w-0">
+            <h4 class="m-0 text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50 truncate {% if not tx.is_active %}line-through{% endif %}">
               {% if tx.description %}
                 {{ tx.description }}
               {% elif tx.spent_category %}
@@ -114,40 +123,39 @@
                 Uncategorised
               {% endif %}
             </h4>
-            <div class="row-subtitle">
-              <span class="accent-green">TX-{{ tx.id }}</span>
+            <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+              <span class="font-semibold text-emerald-600 dark:text-emerald-400">TX-{{ tx.id }}</span>
               {% if tx.account %} &bull; {{ tx.account.name }}{% endif %}
             </div>
           </div>
 
-          <div>
-            <div class="tx-cat-name">
+          <div class="min-w-0">
+            <div class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
               {% if tx.spent_category %}{{ tx.spent_category.name }}{% else %}Uncategorised{% endif %}
             </div>
             {% if tx.spent_category and tx.spent_category.full_path != tx.spent_category.name %}
-              <div class="tx-cat-path">{{ tx.spent_category.full_path }}</div>
+              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate">{{ tx.spent_category.full_path }}</div>
             {% endif %}
           </div>
 
-          <div>
-            <span class="tx-date">{{ tx.transaction_date|date:"Y-m-d" }}</span>
+          <div class="lg:w-24">
+            <span class="text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">{{ tx.transaction_date|date:"Y-m-d" }}</span>
           </div>
 
-          <div class="text-right">
-            <span class="tx-amount accent-green">{{ tx.amount|money }}</span>
+          <div class="sm:text-right lg:w-28">
+            <span class="text-base font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">{{ tx.amount|money }}</span>
           </div>
 
-          <div class="text-center">
-            <span class="badge {% if tx.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+          <div class="lg:w-24 lg:text-center">
+            <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border whitespace-nowrap {% if tx.is_active %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35{% else %}bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30{% endif %}">
               {% if tx.is_active %}Active{% else %}Deactivated{% endif %}
             </span>
           </div>
 
-          <div class="row-actions">
+          <div class="sm:col-span-2 lg:col-span-1 lg:w-60 flex items-center justify-end gap-1.5">
             <button
               type="button"
-              class="btn-orange-pill"
-              style="padding: 0.35rem 0.95rem; font-size: 0.82rem;"
+              class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
               data-tx-id="{{ tx.id }}"
               data-tx-date="{{ tx.transaction_date|date:'Y-m-d' }}"
               data-tx-cat="{{ tx.spent_category_id|default:'' }}"
@@ -160,13 +168,12 @@
               Edit
             </button>
 
-            <form method="post" action="{% url 'transactions_toggle' tx.id %}" style="margin: 0;">
+            <form method="post" action="{% url 'transactions_toggle' tx.id %}" class="m-0 inline-flex items-center">
               {% csrf_token %}
               <input type="hidden" name="next" value="{% url 'today' %}">
               <button
                 type="submit"
-                class="{% if tx.is_active %}btn-danger-pill{% else %}btn-secondary-pill{% endif %}"
-                style="padding: 0.35rem 0.85rem; font-size: 0.82rem;"
+                class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors {% if tx.is_active %}border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400{% else %}border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] text-slate-600 dark:text-slate-300{% endif %}"
               >
                 {% if tx.is_active %}Deactivate{% else %}Activate{% endif %}
               </button>
@@ -175,12 +182,12 @@
             <form
               method="post"
               action="{% url 'transactions_delete' tx.id %}"
-              style="margin: 0;"
+              class="m-0 inline-flex items-center"
               onsubmit="return confirm('Are you sure you want to permanently delete this transaction?');"
             >
               {% csrf_token %}
               <input type="hidden" name="next" value="{% url 'today' %}">
-              <button type="submit" class="btn-danger-pill" style="padding: 0.35rem 0.85rem; font-size: 0.82rem;">
+              <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">
                 Delete
               </button>
             </form>
@@ -191,128 +198,132 @@
   {% endif %}
 
   <!-- Add / Edit Spend Modal -->
-  <div id="spend-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h2 id="spend-modal-title" class="modal-title">Add Spend</h2>
-        <button type="button" class="modal-close-btn" data-modal-close="spend-modal">&times;</button>
+  <div id="spend-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h2 id="spend-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Add Spend</h2>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="spend-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'today_save' %}" id="spend-form">
+      <form method="post" action="{% url 'today_save' %}" id="spend-form" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
         <input type="hidden" name="id" id="spend-id" value="">
         <input type="hidden" name="category" id="spend-category-input" value="">
 
-        <div class="form-group">
-          <label class="form-label" for="spend-date">Date *</label>
-          <input id="spend-date" name="date" type="date" class="form-input" value="{{ today_iso }}" required />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="spend-date">Date *</label>
+          <input id="spend-date" name="date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="spend-account">Account</label>
-          <select id="spend-account" name="account" class="form-select{% if not funded_accounts %} hidden{% endif %}"{% if funded_accounts %} required{% endif %}>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="spend-account">Account</label>
+          <select id="spend-account" name="account" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500{% if not funded_accounts %} hidden{% endif %}"{% if funded_accounts %} required{% endif %}>
             {% for a in funded_accounts %}
               <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
                 {{ a.name }} ({{ a.balance|money }}) {% if a.is_default %}⭐{% endif %}
               </option>
             {% endfor %}
           </select>
-          <p id="no-funded-accounts-msg" class="muted{% if funded_accounts %} hidden{% endif %}" style="margin: 0.25rem 0 0; font-size: 0.85rem;">
-            No accounts with available balance. <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Add funds to an account</a> first.
+          <p id="no-funded-accounts-msg" class="m-0 mt-1 text-sm text-slate-600 dark:text-slate-400{% if funded_accounts %} hidden{% endif %}">
+            No accounts with available balance. <a href="{% url 'accounts' %}" class="font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline">Add funds to an account</a> first.
           </p>
         </div>
 
         <!-- Searchable Spent Category Picker -->
-        <div class="form-group cat-picker-container" id="today-cat-picker">
-          <label class="form-label between-label">
+        <div class="relative flex flex-col gap-1.5" id="today-cat-picker">
+          <label class="flex items-center justify-between w-full text-sm font-medium text-slate-600 dark:text-slate-400">
             <span>Spent Category</span>
-            <span id="dup-warn-badge" class="badge-duplicate-warn hidden">Already recorded for date</span>
+            <span id="dup-warn-badge" class="hidden rounded-full border border-red-500/35 bg-red-500/15 px-2 py-0.5 text-[0.72rem] font-semibold text-red-500 dark:text-red-400 whitespace-nowrap">Already recorded for date</span>
           </label>
 
-          <div id="cat-picker-trigger" class="cat-picker-trigger" onclick="toggleCatPicker(event)">
-            <div class="cat-picker-content">
-              <div id="cat-picker-name" class="cat-picker-name">No category (Uncategorised)</div>
-              <div id="cat-picker-path" class="cat-picker-path">Miscellaneous spend without a specific category</div>
+          <div
+            id="cat-picker-trigger"
+            class="w-full min-h-[48px] px-3.5 py-2.5 rounded-[14px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] flex items-center justify-between cursor-pointer hover:border-orange-500 dark:hover:border-[#ff6b00] [&.has-error]:border-red-500"
+            onclick="toggleCatPicker(event)"
+          >
+            <div class="flex flex-col overflow-hidden flex-1">
+              <div id="cat-picker-name" class="text-sm font-semibold text-slate-900 dark:text-slate-50 truncate">No category (Uncategorised)</div>
+              <div id="cat-picker-path" class="text-xs text-slate-400 dark:text-slate-500 truncate">Miscellaneous spend without a specific category</div>
             </div>
-            <div class="cat-picker-actions">
-              <button type="button" id="cat-clear-btn" class="cat-clear-btn hidden" onclick="clearCatSelection(event)">&times;</button>
-              <span class="cat-arrow">&#9662;</span>
+            <div class="flex items-center gap-2 ml-2">
+              <button type="button" id="cat-clear-btn" class="hidden bg-transparent border-0 text-slate-400 hover:text-red-500 text-lg cursor-pointer" onclick="clearCatSelection(event)">&times;</button>
+              <span class="text-slate-400 text-xs">&#9662;</span>
             </div>
           </div>
 
-          <div id="cat-picker-menu" class="cat-picker-menu hidden">
-            <div class="cat-search-box">
+          <div id="cat-picker-menu" class="hidden absolute top-[calc(100%+4px)] left-0 right-0 bg-white dark:bg-[#16202c] border border-slate-200 dark:border-[#233144] rounded-[10px] shadow-2xl z-[1200] overflow-hidden flex flex-col max-h-[290px]">
+            <div class="p-2 bg-white dark:bg-[#16202c] border-b border-slate-200 dark:border-white/10">
               <input
                 id="cat-search-input"
                 type="text"
-                class="cat-search-input"
+                class="w-full px-3.5 py-2 text-sm bg-white dark:bg-[#0f1622] border border-slate-300 dark:border-[#26354a] rounded-full text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
                 placeholder="Type to search category by name or path..."
                 onclick="event.stopPropagation()"
               />
             </div>
 
-            <div class="cat-options-list" id="cat-options-list">
+            <div class="overflow-y-auto max-h-[220px]" id="cat-options-list">
               <div
-                class="cat-option"
+                class="cat-option px-3.5 py-2.5 cursor-pointer border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 [&.is-selected]:bg-orange-500/10 [&.is-disabled]:opacity-50 [&.is-disabled]:cursor-not-allowed [&.is-disabled]:bg-red-500/5"
                 data-cat-id=""
                 data-cat-name="No category (Uncategorised)"
                 data-cat-path="Miscellaneous spend without a specific category"
                 onclick="pickCategory(this)"
               >
-                <div class="cat-opt-info">
-                  <div class="cat-opt-name">No category (Uncategorised)</div>
-                  <div class="cat-opt-path">Miscellaneous spend without a specific category</div>
+                <div class="flex flex-col gap-0.5">
+                  <div class="text-sm font-semibold text-slate-900 dark:text-slate-50">No category (Uncategorised)</div>
+                  <div class="text-xs text-slate-400 dark:text-slate-500">Miscellaneous spend without a specific category</div>
                 </div>
               </div>
 
               {% for c in active_categories %}
                 <div
-                  class="cat-option"
+                  class="cat-option px-3.5 py-2.5 cursor-pointer border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 [&.is-selected]:bg-orange-500/10 [&.is-disabled]:opacity-50 [&.is-disabled]:cursor-not-allowed [&.is-disabled]:bg-red-500/5"
                   data-cat-id="{{ c.id }}"
                   data-cat-name="{{ c.name }}"
                   data-cat-path="{{ c.full_path }}"
                   onclick="pickCategory(this)"
                 >
-                  <div class="cat-opt-info">
-                    <div class="cat-opt-name-row">
-                      <span class="cat-opt-name">{{ c.name }}</span>
-                      <span class="badge-duplicate-warn dup-item-badge hidden">Already recorded</span>
+                  <div class="flex flex-col gap-0.5">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">{{ c.name }}</span>
+                      <span class="dup-item-badge hidden rounded-full border border-red-500/35 bg-red-500/15 px-2 py-0.5 text-[0.72rem] font-semibold text-red-500 dark:text-red-400 whitespace-nowrap">Already recorded</span>
                     </div>
-                    <div class="cat-opt-path">{{ c.full_path }}</div>
+                    <div class="text-xs text-slate-400 dark:text-slate-500">{{ c.full_path }}</div>
                   </div>
                 </div>
               {% endfor %}
 
-              <div id="cat-no-results" class="cat-no-results hidden">No matching categories found.</div>
+              <div id="cat-no-results" class="hidden p-4 text-center text-slate-400 dark:text-slate-500 text-sm">No matching categories found.</div>
             </div>
           </div>
 
-          <span class="form-hint">
+          <span class="text-xs text-slate-400 dark:text-slate-500">
             Select or search the granular spent category (e.g. supermarket, MEAT, milk). Duplicate entries for the same category on this date are restricted.
           </span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="spend-amount">Amount *</label>
-          <input id="spend-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
-          <div id="spend-amount-hint" class="form-hint"></div>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="spend-amount">Amount *</label>
+          <input id="spend-amount" name="amount" type="number" step="0.01" min="0.01" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="0.00" required />
+          <div id="spend-amount-hint" class="text-xs text-slate-400 dark:text-slate-500"></div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="spend-narrative">Narrative</label>
-          <input id="spend-narrative" name="narrative" type="text" class="form-input" placeholder="What did you spend on? (e.g. 2kg Beef)" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="spend-narrative">Narrative</label>
+          <input id="spend-narrative" name="narrative" type="text" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="What did you spend on? (e.g. 2kg Beef)" />
         </div>
 
-        <div id="spend-active-row" class="form-group hidden">
-          <label class="form-checkbox-row">
-            <input id="spend-is-active" name="is_active" type="checkbox" checked />
+        <div id="spend-active-row" class="hidden flex flex-col gap-1.5">
+          <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+            <input id="spend-is-active" name="is_active" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" checked />
             <span><strong>Active spend</strong> (counts in spending and balances)</span>
           </label>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="spend-modal">Cancel</button>
-          <button type="submit" id="spend-submit-btn" class="btn-orange-pill">Record Spend</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="spend-modal">Cancel</button>
+          <button type="submit" id="spend-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Record Spend</button>
         </div>
       </form>
     </div>

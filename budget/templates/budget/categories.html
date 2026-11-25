@@ -4,49 +4,63 @@
 {% block title %}Categories — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="categories-page">
-  <div class="page-header between-header">
+<div class="space-y-5">
+  <!-- Header -->
+  <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h1 class="page-title">Category Management</h1>
-      <p class="page-subtitle">
-        Structure: <span class="tag-cyan">Budget Grouping</span> (Priority 1-10) &rarr;
-        <span class="tag-orange">Budget Category</span> (Needs, Wants, Savings) &rarr;
-        <span class="tag-green">Spent Category</span> (Supermarket, Meat, Milk)
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Category Management</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
+        Structure: <span class="font-semibold text-sky-600 dark:text-sky-400">Budget Grouping</span> (Priority 1-10) &rarr;
+        <span class="font-semibold text-orange-600 dark:text-[#ff6b00]">Budget Category</span> (Needs, Wants, Savings) &rarr;
+        <span class="font-semibold text-emerald-600 dark:text-emerald-400">Spent Category</span> (Supermarket, Meat, Milk)
       </p>
     </div>
 
-    <button type="button" class="btn-orange-pill" onclick="openCreateCatModal()">
+    <button
+      type="button"
+      onclick="openCreateCatModal()"
+      class="inline-flex items-center justify-center gap-1.5 rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+    >
       + Add {% if current_tab == 'grouping' %}Budget Grouping{% elif current_tab == 'budget' %}Budget Category{% else %}Spent Category{% endif %}
     </button>
   </div>
 
   <!-- Three Links Sub-navigation -->
-  <div class="category-tabs-bar">
-    <a href="{% url 'categories' %}?tab=grouping{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="cat-tab-link {% if current_tab == 'grouping' %}active{% endif %}">
-      <span class="tab-badge">1</span>
+  <div class="inline-flex flex-wrap max-w-full overflow-x-auto gap-2 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-1.5 shadow-sm">
+    <a
+      href="{% url 'categories' %}?tab=grouping{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm no-underline transition-colors {% if current_tab == 'grouping' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'grouping' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">1</span>
       Budget Grouping Category
-      <span class="tab-count">({{ groups|length }})</span>
+      <span class="text-xs opacity-80">({{ groups|length }})</span>
     </a>
-    <a href="{% url 'categories' %}?tab=budget{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="cat-tab-link {% if current_tab == 'budget' %}active{% endif %}">
-      <span class="tab-badge">2</span>
+    <a
+      href="{% url 'categories' %}?tab=budget{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm no-underline transition-colors {% if current_tab == 'budget' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'budget' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">2</span>
       Budget Category
-      <span class="tab-count">({{ budget_cats|length }})</span>
+      <span class="text-xs opacity-80">({{ budget_cats|length }})</span>
     </a>
-    <a href="{% url 'categories' %}?tab=spent{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="cat-tab-link {% if current_tab == 'spent' %}active{% endif %}">
-      <span class="tab-badge">3</span>
+    <a
+      href="{% url 'categories' %}?tab=spent{% if search_query %}&q={{ search_query|urlencode }}{% endif %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm no-underline transition-colors {% if current_tab == 'spent' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'spent' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">3</span>
       Spent Category
-      <span class="tab-count">({{ spent_cats|length }})</span>
+      <span class="text-xs opacity-80">({{ spent_cats|length }})</span>
     </a>
   </div>
 
   <!-- Search Input -->
-  <form method="get" action="{% url 'categories' %}" class="search-pill-container" style="margin-top: 1rem;">
+  <form method="get" action="{% url 'categories' %}" class="m-0 w-full">
     <input type="hidden" name="tab" value="{{ current_tab }}">
     <input
       name="q"
       value="{{ search_query }}"
       type="text"
-      class="search-pill-input"
+      class="w-full rounded-full border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-5 py-3 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500 dark:focus:border-[#ff6b00]"
       placeholder="{% if current_tab == 'grouping' %}Search Budget Grouping categories (e.g. UPKEEP, HOUSING)...{% elif current_tab == 'budget' %}Search Budget categories (e.g. Shopping, Utilities)...{% else %}Search Spent categories (e.g. MEAT, milk, supermarket)...{% endif %}"
     />
   </form>
@@ -54,44 +68,49 @@
   <!-- TIER 1: BUDGET GROUPING CATEGORY -->
   {% if current_tab == 'grouping' %}
     {% if not filtered_groups %}
-      <div class="empty-state">
-        <h3>No Budget Grouping categories found</h3>
-        <p class="muted">Budget Groupings (e.g. UPKEEP, HOUSING) have a priority 1 to 10 used for budget section display ordering.</p>
-        <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openCreateCatModal()">+ Create First Grouping</button>
+      <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-10 text-center">
+        <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No Budget Grouping categories found</h3>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Budget Groupings (e.g. UPKEEP, HOUSING) have a priority 1 to 10 used for budget section display ordering.</p>
+        <button
+          type="button"
+          onclick="openCreateCatModal()"
+          class="mt-4 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+        >+ Create First Grouping</button>
       </div>
     {% else %}
-      <div class="data-list-container">
-        <div class="data-list-header group-cols">
+      <div class="flex flex-col gap-2.5">
+        <div class="hidden md:grid md:grid-cols-[2.5fr_1.8fr_1.8fr_1.5fr] gap-4 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           <div>Grouping Name</div>
           <div>Display Priority (1 - 10)</div>
           <div>Linked Budget Categories</div>
-          <div style="text-align: right;">Actions</div>
+          <div class="text-right">Actions</div>
         </div>
         {% for grp in filtered_groups %}
-          <div class="data-row group-cols">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[2.5fr_1.8fr_1.8fr_1.5fr] items-center gap-3 md:gap-4 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-5 py-4 shadow-sm hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors">
             <div>
-              <h4 class="row-title">{{ grp.name }}</h4>
-              <div class="row-subtitle">ID: GRP-{{ grp.id }}</div>
+              <h4 class="m-0 text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50">{{ grp.name }}</h4>
+              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">ID: GRP-{{ grp.id }}</div>
             </div>
             <div>
-              <span class="priority-pill priority-{{ grp.priority }}">Priority: {{ grp.priority }}</span>
+              <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-bold border {% if grp.priority <= 2 %}bg-red-500/15 text-red-500 dark:text-red-400 border-red-500/35{% elif grp.priority <= 5 %}bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/35{% else %}bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/35{% endif %}">
+                Priority: {{ grp.priority }}
+              </span>
             </div>
-            <div style="color: var(--text-secondary); font-size: 0.9rem;">
+            <div class="text-sm text-slate-600 dark:text-slate-400">
               {{ grp.budget_categories.count }} categories linked
             </div>
-            <div class="row-actions">
+            <div class="flex items-center justify-end gap-2 flex-wrap">
               <button
                 type="button"
-                class="btn-orange-pill"
-                style="padding: 0.35rem 0.95rem; font-size: 0.82rem;"
+                class="inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3.5 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
                 data-id="{{ grp.id }}"
                 data-name="{{ grp.name|escapejs }}"
                 data-priority="{{ grp.priority }}"
                 onclick="openEditCatModal(this)"
               >Edit</button>
-              <form method="post" action="{% url 'categories_delete' 'grouping' grp.id %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this category?');">
+              <form method="post" action="{% url 'categories_delete' 'grouping' grp.id %}" class="m-0" onsubmit="return confirm('Are you sure you want to delete this category?');">
                 {% csrf_token %}
-                <button type="submit" class="btn-danger-pill">Delete</button>
+                <button type="submit" class="inline-flex items-center rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3.5 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">Delete</button>
               </form>
             </div>
           </div>
@@ -102,45 +121,48 @@
   <!-- TIER 2: BUDGET CATEGORY -->
   {% elif current_tab == 'budget' %}
     {% if not filtered_budget_cats %}
-      <div class="empty-state">
-        <h3>No Budget categories found</h3>
-        <p class="muted">Budget categories are linked 1-many to a Budget Grouping Category and have a Type (Needs, Wants, Savings).</p>
-        <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openCreateCatModal()">+ Create Budget Category</button>
+      <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-10 text-center">
+        <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No Budget categories found</h3>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Budget categories are linked 1-many to a Budget Grouping Category and have a Type (Needs, Wants, Savings).</p>
+        <button
+          type="button"
+          onclick="openCreateCatModal()"
+          class="mt-4 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+        >+ Create Budget Category</button>
       </div>
     {% else %}
-      <div class="data-list-container">
-        <div class="data-list-header bcat-cols">
+      <div class="flex flex-col gap-2.5">
+        <div class="hidden md:grid md:grid-cols-[2fr_1.8fr_1.2fr_1fr_1.8fr] gap-4 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           <div>Budget Category</div>
           <div>Linked Grouping</div>
           <div>Type</div>
           <div>Status</div>
-          <div style="text-align: right;">Actions</div>
+          <div class="text-right">Actions</div>
         </div>
         {% for bcat in filtered_budget_cats %}
-          <div class="data-row bcat-cols {% if not bcat.is_active %}is-inactive{% endif %}">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[2fr_1.8fr_1.2fr_1fr_1.8fr] items-center gap-3 md:gap-4 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-5 py-4 shadow-sm hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors {% if not bcat.is_active %}opacity-55{% endif %}">
             <div>
-              <h4 class="row-title">{{ bcat.name }}</h4>
-              <div class="row-subtitle">BCAT-{{ bcat.id }}</div>
+              <h4 class="m-0 text-[0.95rem] font-semibold {% if not bcat.is_active %}line-through{% endif %} text-slate-900 dark:text-slate-50">{{ bcat.name }}</h4>
+              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-50">BCAT-{{ bcat.id }}</div>
             </div>
             <div>
-              <span style="font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">{{ bcat.grouping.name }}</span>
-              <span class="row-subtitle" style="display: block; font-size: 0.75rem;">(Priority: {{ bcat.grouping.priority }})</span>
+              <span class="text-sm font-medium text-slate-900 dark:text-slate-100">{{ bcat.grouping.name }}</span>
+              <span class="block text-xs text-slate-400 dark:text-slate-500">(Priority: {{ bcat.grouping.priority }})</span>
             </div>
             <div>
-              <span class="badge {% if bcat.category_type == 'needs' %}badge-type-budget{% elif bcat.category_type == 'savings' %}badge-savings{% else %}badge-type-main{% endif %}">
+              <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border capitalize {% if bcat.category_type == 'needs' or bcat.category_type == 'savings' %}bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35{% else %}bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/35{% endif %}">
                 {{ bcat.get_category_type_display }}
               </span>
             </div>
             <div>
-              <span class="badge {% if bcat.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+              <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border {% if bcat.is_active %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35{% else %}bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30{% endif %}">
                 {% if bcat.is_active %}Active{% else %}Inactive{% endif %}
               </span>
             </div>
-            <div class="row-actions">
+            <div class="flex items-center justify-end gap-2 flex-wrap">
               <button
                 type="button"
-                class="btn-orange-pill"
-                style="padding: 0.35rem 0.95rem; font-size: 0.82rem;"
+                class="inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3.5 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
                 data-id="{{ bcat.id }}"
                 data-name="{{ bcat.name|escapejs }}"
                 data-grouping="{{ bcat.grouping_id }}"
@@ -148,15 +170,18 @@
                 data-active="{% if bcat.is_active %}1{% else %}0{% endif %}"
                 onclick="openEditCatModal(this)"
               >Edit</button>
-              <form method="post" action="{% url 'categories_toggle' 'budget' bcat.id %}" style="margin: 0;">
+              <form method="post" action="{% url 'categories_toggle' 'budget' bcat.id %}" class="m-0">
                 {% csrf_token %}
-                <button type="submit" class="{% if bcat.is_active %}btn-danger-pill{% else %}btn-secondary-pill{% endif %}" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+                <button
+                  type="submit"
+                  class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors {% if bcat.is_active %}border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400{% else %}border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] text-slate-600 dark:text-slate-300{% endif %}"
+                >
                   {% if bcat.is_active %}Deactivate{% else %}Activate{% endif %}
                 </button>
               </form>
-              <form method="post" action="{% url 'categories_delete' 'budget' bcat.id %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this category?');">
+              <form method="post" action="{% url 'categories_delete' 'budget' bcat.id %}" class="m-0" onsubmit="return confirm('Are you sure you want to delete this category?');">
                 {% csrf_token %}
-                <button type="submit" class="btn-danger-pill">Delete</button>
+                <button type="submit" class="inline-flex items-center rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">Delete</button>
               </form>
             </div>
           </div>
@@ -167,49 +192,52 @@
   <!-- TIER 3: SPENT CATEGORY -->
   {% else %}
     {% if not filtered_spent_cats %}
-      <div class="empty-state">
-        <h3>No Spent categories found</h3>
-        <p class="muted">Spent categories (e.g. supermarket, MEAT, milk) are linked to a Budget Category, and have As Savings and Active flags.</p>
-        <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openCreateCatModal()">+ Create Spent Category</button>
+      <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-10 text-center">
+        <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No Spent categories found</h3>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Spent categories (e.g. supermarket, MEAT, milk) are linked to a Budget Category, and have As Savings and Active flags.</p>
+        <button
+          type="button"
+          onclick="openCreateCatModal()"
+          class="mt-4 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+        >+ Create Spent Category</button>
       </div>
     {% else %}
-      <div class="data-list-container">
-        <div class="data-list-header scat-cols">
+      <div class="flex flex-col gap-2.5">
+        <div class="hidden md:grid md:grid-cols-[2.2fr_1.8fr_1.2fr_1fr_1.8fr] gap-4 px-5 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
           <div>Spent Category / Path</div>
           <div>Linked Budget Category</div>
           <div>As Savings</div>
           <div>Status</div>
-          <div style="text-align: right;">Actions</div>
+          <div class="text-right">Actions</div>
         </div>
         {% for scat in filtered_spent_cats %}
-          <div class="data-row scat-cols {% if not scat.is_active %}is-inactive{% endif %}">
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[2.2fr_1.8fr_1.2fr_1fr_1.8fr] items-center gap-3 md:gap-4 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-5 py-4 shadow-sm hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors {% if not scat.is_active %}opacity-55{% endif %}">
             <div>
-              <h4 class="row-title">{{ scat.name }}</h4>
-              <div class="row-subtitle">
-                <span class="accent-green">SCAT-{{ scat.id }}</span>
+              <h4 class="m-0 text-[0.95rem] font-semibold {% if not scat.is_active %}line-through{% endif %} text-slate-900 dark:text-slate-50">{{ scat.name }}</h4>
+              <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-50">
+                <span class="font-semibold text-emerald-600 dark:text-emerald-400">SCAT-{{ scat.id }}</span>
                 {% if scat.full_path %} &bull; {{ scat.full_path }}{% endif %}
               </div>
             </div>
             <div>
-              <span style="font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">
+              <span class="text-sm font-medium text-slate-900 dark:text-slate-100">
                 {% if scat.budget_category %}{{ scat.budget_category.name }}{% else %}No default{% endif %}
               </span>
             </div>
             <div>
-              <span class="badge {% if scat.is_savings %}badge-savings{% else %}badge-inactive{% endif %}">
+              <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border {% if scat.is_savings %}bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35{% else %}bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30{% endif %}">
                 {% if scat.is_savings %}Savings{% else %}Standard{% endif %}
               </span>
             </div>
             <div>
-              <span class="badge {% if scat.is_active %}badge-active{% else %}badge-inactive{% endif %}">
+              <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border {% if scat.is_active %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35{% else %}bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30{% endif %}">
                 {% if scat.is_active %}Active{% else %}Inactive{% endif %}
               </span>
             </div>
-            <div class="row-actions">
+            <div class="flex items-center justify-end gap-2 flex-wrap">
               <button
                 type="button"
-                class="btn-orange-pill"
-                style="padding: 0.35rem 0.95rem; font-size: 0.82rem;"
+                class="inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3.5 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
                 data-id="{{ scat.id }}"
                 data-name="{{ scat.name|escapejs }}"
                 data-bcat="{{ scat.budget_category_id|default:'' }}"
@@ -218,15 +246,18 @@
                 data-created="{{ scat.created_at|date:'M j, Y' }}"
                 onclick="openEditCatModal(this)"
               >Edit</button>
-              <form method="post" action="{% url 'categories_toggle' 'spent' scat.id %}" style="margin: 0;">
+              <form method="post" action="{% url 'categories_toggle' 'spent' scat.id %}" class="m-0">
                 {% csrf_token %}
-                <button type="submit" class="{% if scat.is_active %}btn-danger-pill{% else %}btn-secondary-pill{% endif %}" style="padding: 0.35rem 0.85rem; font-size: 0.8rem;">
+                <button
+                  type="submit"
+                  class="inline-flex items-center rounded-full px-3 py-1.5 text-xs font-semibold cursor-pointer transition-colors {% if scat.is_active %}border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400{% else %}border border-slate-300 dark:border-[#26354a] bg-transparent hover:bg-slate-100 dark:hover:bg-[#1c2736] text-slate-600 dark:text-slate-300{% endif %}"
+                >
                   {% if scat.is_active %}Deactivate{% else %}Activate{% endif %}
                 </button>
               </form>
-              <form method="post" action="{% url 'categories_delete' 'spent' scat.id %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this category?');">
+              <form method="post" action="{% url 'categories_delete' 'spent' scat.id %}" class="m-0" onsubmit="return confirm('Are you sure you want to delete this category?');">
                 {% csrf_token %}
-                <button type="submit" class="btn-danger-pill">Delete</button>
+                <button type="submit" class="inline-flex items-center rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">Delete</button>
               </form>
             </div>
           </div>
@@ -236,27 +267,27 @@
   {% endif %}
 
   <!-- Modal Dialog -->
-  <div id="cat-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h2 id="cat-modal-title" class="modal-title">Create Category</h2>
-        <button type="button" class="modal-close-btn" data-modal-close="cat-modal">&times;</button>
+  <div id="cat-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h2 id="cat-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Create Category</h2>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="cat-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'categories_save' %}">
+      <form method="post" action="{% url 'categories_save' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
         <input type="hidden" name="tier" value="{{ current_tab }}">
         <input type="hidden" name="id" id="cat-id" value="">
         <input type="hidden" name="is_active_submitted" value="1">
 
         {% if current_tab == 'grouping' %}
-          <div class="form-group">
-            <label class="form-label" for="cat-name">Grouping Category Name *</label>
-            <input id="cat-name" name="name" class="form-input" placeholder="e.g. UPKEEP, HOUSING, TRANSPORT, LEISURE" required />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-name">Grouping Category Name *</label>
+            <input id="cat-name" name="name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. UPKEEP, HOUSING, TRANSPORT, LEISURE" required />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="cat-priority">Display Priority (1 to 10) *</label>
-            <select id="cat-priority" name="priority" class="form-select" required>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-priority">Display Priority (1 to 10) *</label>
+            <select id="cat-priority" name="priority" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
               <option value="1">1 (Highest Priority - Appears First)</option>
               <option value="2">2 - High Priority</option>
               <option value="3">3 - Standard Priority</option>
@@ -268,73 +299,73 @@
               <option value="9">9 - Low Priority</option>
               <option value="10">10 (Lowest Priority - Appears Last)</option>
             </select>
-            <span class="form-hint">Used for budget display section ordering. Lower numbers appear first.</span>
+            <span class="text-xs text-slate-400 dark:text-slate-500">Used for budget display section ordering. Lower numbers appear first.</span>
           </div>
 
         {% elif current_tab == 'budget' %}
-          <div class="form-group">
-            <label class="form-label" for="cat-name">Budget Category Name *</label>
-            <input id="cat-name" name="name" class="form-input" placeholder="e.g. Shopping, Utilities, Medical, Education" required />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-name">Budget Category Name *</label>
+            <input id="cat-name" name="name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. Shopping, Utilities, Medical, Education" required />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="cat-grouping">Linked Budget Grouping Category *</label>
-            <select id="cat-grouping" name="grouping" class="form-select" required>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-grouping">Linked Budget Grouping Category *</label>
+            <select id="cat-grouping" name="grouping" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
               <option value="" disabled>Select Grouping Category</option>
               {% for g in groups %}
                 <option value="{{ g.id }}">{{ g.name }} (Priority: {{ g.priority }})</option>
               {% endfor %}
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-label" for="cat-type">Type *</label>
-            <select id="cat-type" name="category_type" class="form-select" required>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-type">Type *</label>
+            <select id="cat-type" name="category_type" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
               <option value="needs">Needs (Essential living expenses)</option>
               <option value="wants">Wants (Discretionary & leisure)</option>
               <option value="savings">Savings (Savings goals & emergency fund)</option>
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-checkbox-row">
-              <input id="cat-is-active" name="is_active" type="checkbox" checked />
+          <div class="flex flex-col gap-1.5">
+            <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+              <input id="cat-is-active" name="is_active" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" checked />
               <span><strong>Active</strong> (available for budget allocation)</span>
             </label>
           </div>
 
         {% else %}
-          <div class="form-group">
-            <label class="form-label">Date Created</label>
-            <input id="cat-created" type="text" class="form-input" value="Automatically set on creation" disabled style="opacity: 0.7; cursor: not-allowed;" />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400">Date Created</label>
+            <input id="cat-created" type="text" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 opacity-70 cursor-not-allowed" value="Automatically set on creation" disabled />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="cat-name">Spent Category Name *</label>
-            <input id="cat-name" name="name" class="form-input" placeholder="e.g. supermarket, MEAT, milk, fuel, electricity" required />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-name">Spent Category Name *</label>
+            <input id="cat-name" name="name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. supermarket, MEAT, milk, fuel, electricity" required />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="cat-bcat">Linked Budget Category (Default)</label>
-            <select id="cat-bcat" name="budget_category" class="form-select">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="cat-bcat">Linked Budget Category (Default)</label>
+            <select id="cat-bcat" name="budget_category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
               <option value="">No linked budget category (Unassigned)</option>
               {% for b in budget_cats %}
                 <option value="{{ b.id }}">{{ b.name }} ({{ b.grouping.name }})</option>
               {% endfor %}
             </select>
           </div>
-          <div class="form-group">
-            <label class="form-checkbox-row">
-              <input id="cat-is-savings" name="is_savings" type="checkbox" />
+          <div class="flex flex-col gap-1.5">
+            <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+              <input id="cat-is-savings" name="is_savings" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" />
               <span><strong>As Savings</strong> (mark category as savings tracking)</span>
             </label>
           </div>
-          <div class="form-group">
-            <label class="form-checkbox-row">
-              <input id="cat-is-active" name="is_active" type="checkbox" checked />
+          <div class="flex flex-col gap-1.5">
+            <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+              <input id="cat-is-active" name="is_active" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" checked />
               <span><strong>Active</strong> (available for recording transactions)</span>
             </label>
           </div>
         {% endif %}
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="cat-modal">Cancel</button>
-          <button type="submit" id="cat-submit-btn" class="btn-orange-pill">Create</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="cat-modal">Cancel</button>
+          <button type="submit" id="cat-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Create</button>
         </div>
       </form>
     </div>

@@ -4,28 +4,35 @@
 {% block title %}Accounts — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="accounts-page-view">
+<div class="space-y-4">
   <!-- Header with Quick Action Buttons -->
-  <header class="page-header between">
+  <header class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="page-title">Bank & Mobile Money Accounts</h1>
-      <p class="page-subtitle">
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Bank &amp; Mobile Money Accounts</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Manage your liquid wallets, bank accounts, savings pots, reconciliations, and transfers.
       </p>
     </div>
 
-    <div class="row-actions">
-      <button type="button" class="btn-orange-pill" onclick="openAccountModal()">
-        <span>➕ Add Account</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onclick="openAccountModal()"
+        class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+      >
+        <span>&#10133; Add Account</span>
       </button>
-      <button type="button" class="btn-secondary-pill" onclick="openTransferModal()">
-        <span>🔁 Transfer Money</span>
+      <button
+        type="button"
+        onclick="openTransferModal()"
+        class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+      >
+        <span>&#128257; Transfer Money</span>
       </button>
       {% if archived_accounts %}
         <a
           href="{% url 'accounts' %}{% if not show_archived %}?show_archived=1{% endif %}"
-          class="btn-secondary-pill {% if show_archived %}active{% endif %}"
-          style="text-decoration: none;"
+          class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border px-4 py-2 text-sm font-medium no-underline transition-colors {% if show_archived %}bg-orange-500/15 text-orange-600 dark:text-[#ff6b00] border-orange-500/40{% else %}border-slate-300 dark:border-[#26354a] bg-transparent text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
         >
           <span>{% if show_archived %}Hide Archived{% else %}Show Archived ({{ archived_accounts|length }}){% endif %}</span>
         </a>
@@ -34,58 +41,68 @@
   </header>
 
   <!-- Top Executive Summary Cards -->
-  <section class="account-kpi-grid">
-    <div class="account-kpi-card kpi-accent">
-      <span class="account-kpi-label">💳 Total Net Worth</span>
-      <span class="account-kpi-val">{{ total_net_worth|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">All active liquid + savings pots</span>
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128179; Total Net Worth</span>
+      <span class="text-2xl font-bold tracking-tight text-orange-600 dark:text-[#ff6b00]">{{ total_net_worth|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">All active liquid + savings pots</span>
     </div>
 
-    <div class="account-kpi-card kpi-green">
-      <span class="account-kpi-label">💧 Liquid Funds</span>
-      <span class="account-kpi-val">{{ total_liquid|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">Available for immediate spending</span>
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128167; Liquid Funds</span>
+      <span class="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{{ total_liquid|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">Available for immediate spending</span>
     </div>
 
-    <div class="account-kpi-card kpi-cyan">
-      <span class="account-kpi-label">🔒 Locked in Pots</span>
-      <span class="account-kpi-val">{{ total_pots|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">M-Shwari & fixed goal savings</span>
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128274; Locked in Pots</span>
+      <span class="text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400">{{ total_pots|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">M-Shwari &amp; fixed goal savings</span>
     </div>
 
-    <div class="account-kpi-card {% if low_balance_count > 0 %}kpi-warn{% endif %}">
-      <span class="account-kpi-label">⚠️ Balance Alerts</span>
-      <span class="account-kpi-val">{{ low_balance_count }}</span>
-      <span class="muted" style="font-size: 0.76rem;">
+    <div class="flex flex-col gap-1 rounded-[14px] border bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5 {% if low_balance_count > 0 %}border-red-500/40{% else %}border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00]{% endif %}">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9888;&#65039; Balance Alerts</span>
+      <span class="text-2xl font-bold tracking-tight {% if low_balance_count > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">{{ low_balance_count }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">
         {% if low_balance_count > 0 %}Accounts below minimum threshold{% else %}All accounts within safety limits{% endif %}
       </span>
     </div>
   </section>
 
   {% if not active_accounts and not archived_accounts %}
-    <div class="empty-state">
-      <h3>No accounts found</h3>
-      <p class="muted">Add your primary bank account or M-Pesa wallet to get started.</p>
-      <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openAccountModal()">
+    <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+      <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No accounts found</h3>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Add your primary bank account or M-Pesa wallet to get started.</p>
+      <button
+        type="button"
+        onclick="openAccountModal()"
+        class="mt-4 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+      >
         Add your first account
       </button>
     </div>
   {% else %}
     <!-- Active Accounts List -->
-    <section class="accounts-grid">
+    <section class="flex flex-col gap-3.5">
       {% for account in top_level_active %}
-        <div class="account-card {% if account.is_low_balance %}low-balance{% endif %}">
-          <div class="account-header-row">
-            <div class="account-title-group">
-              <div class="account-avatar">{{ account.kind|kind_icon }}</div>
-              <div class="account-title-text">
-                <h3 class="account-name">
+        <div class="flex flex-col gap-3 rounded-[14px] border p-4 shadow-sm transition-all {% if account.is_low_balance %}border-red-500/60 bg-gradient-to-r from-red-500/[0.04] via-white to-white dark:via-[#16202c] dark:to-[#16202c]{% else %}border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] hover:border-slate-300 dark:hover:border-[#26354a]{% endif %}">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-[#233144] flex items-center justify-center text-xl shrink-0">
+                {{ account.kind|kind_icon }}
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <h3 class="m-0 flex flex-wrap items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-50">
                   {{ account.name }}
-                  {% if account.is_default %}<span class="badge badge-default">⭐ Default</span>{% endif %}
-                  <span class="badge badge-active">{{ account.kind|kind_name }}</span>
-                  {% if account.is_low_balance %}<span class="badge badge-low-balance">⚠️ Low Balance</span>{% endif %}
+                  {% if account.is_default %}
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-orange-500/15 text-orange-600 dark:text-[#ff6b00] border-orange-500/40">&#11088; Default</span>
+                  {% endif %}
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35">{{ account.kind|kind_name }}</span>
+                  {% if account.is_low_balance %}
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/35 animate-pulse">&#9888;&#65039; Low Balance</span>
+                  {% endif %}
                 </h3>
-                <div class="account-subtitle">
+                <div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
                   {% if account.account_number %}<span>Acc/Till: {{ account.account_number }} &bull;</span>{% endif %}
                   <span>Opening: {{ account.opening_balance|money }} (as of {{ account.as_of_date|date:"Y-m-d" }})</span>
                   {% if account.minimum_balance > 0 %}<span>&bull; Min Threshold: {{ account.minimum_balance|money }}</span>{% endif %}
@@ -93,50 +110,61 @@
               </div>
             </div>
 
-            <div class="row-actions">
+            <div class="flex flex-wrap items-center gap-1.5">
               <a
                 href="{% url 'accounts' %}?insights={{ account.id }}&timeframe=month{% if show_archived %}&show_archived=1{% endif %}"
-                class="btn-action-pill btn-insights"
-                style="text-decoration: none;"
-              >📊 Insights</a>
-              <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ account.id }})">
-                ⚖️ Reconcile
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              >&#128202; Insights</a>
+              <button
+                type="button"
+                onclick="openReconcileModal({{ account.id }})"
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+              >
+                &#9878;&#65039; Reconcile
               </button>
-              <button type="button" class="btn-action-pill btn-transfer" onclick="openTransferModal({{ account.id }})" {% if account.balance <= 0 %}disabled title="No available balance to transfer"{% endif %}>
-                🔁 Transfer
+              <button
+                type="button"
+                onclick="openTransferModal({{ account.id }})"
+                {% if account.balance <= 0 %}disabled title="No available balance to transfer"{% endif %}
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:border-orange-500 hover:text-orange-600 dark:hover:text-[#ff6b00] transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
+              >
+                &#128257; Transfer
               </button>
             </div>
           </div>
 
           {% if account.is_low_balance %}
-            <div class="low-balance-alert-banner">
-              <span>⚠️ Low Balance Warning: Balance of {{ account.balance|money }} is below your minimum threshold of {{ account.minimum_balance|money }}. Top up to avoid failed transactions.</span>
+            <div class="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs font-medium text-red-600 dark:text-red-400">
+              <span>&#9888;&#65039; Low Balance Warning: Balance of {{ account.balance|money }} is below your minimum threshold of {{ account.minimum_balance|money }}. Top up to avoid failed transactions.</span>
             </div>
           {% endif %}
 
-          <div class="account-balance-section">
-            <div class="balance-box">
-              <span class="balance-label">Liquid Balance</span>
-              <span class="balance-amount highlight">{{ account.balance|money }}</span>
+          <div class="flex flex-wrap items-end justify-between gap-4 rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-slate-50 dark:bg-[#0f1622] px-3.5 py-2.5">
+            <div class="flex flex-col gap-0.5">
+              <span class="text-[0.72rem] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Liquid Balance</span>
+              <span class="text-xl font-bold leading-tight text-orange-600 dark:text-[#ff6b00]">{{ account.balance|money }}</span>
             </div>
 
             {% if account.pots_list %}
-              <div class="balance-box">
-                <span class="balance-label">Total Balance (With Pots)</span>
-                <span class="balance-amount">{{ account.total_balance|money }}</span>
+              <div class="flex flex-col gap-0.5">
+                <span class="text-[0.72rem] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Total Balance (With Pots)</span>
+                <span class="text-xl font-bold leading-tight text-slate-900 dark:text-slate-50">{{ account.total_balance|money }}</span>
               </div>
             {% endif %}
 
-            <div class="balance-aux-info">
+            <div class="flex flex-wrap items-center gap-2.5 text-xs text-slate-600 dark:text-slate-400">
               {% if account.pots_list %}
-                <span class="aux-tag">
-                  🍯 {{ account.pots_list|length }} Sub-Account{% if account.pots_list|length > 1 %}s{% endif %} / Pots
+                <span class="inline-flex items-center gap-1">
+                  &#127855; {{ account.pots_list|length }} Sub-Account{% if account.pots_list|length > 1 %}s{% endif %} / Pots
                 </span>
               {% endif %}
               {% if not account.is_default %}
-                <form method="post" action="{% url 'accounts_set_default' account.id %}" style="margin: 0;">
+                <form method="post" action="{% url 'accounts_set_default' account.id %}" class="m-0 inline-flex items-center">
                   {% csrf_token %}
-                  <button type="submit" class="btn-secondary-pill" style="font-size: 0.78rem; padding: 0.25rem 0.65rem;">
+                  <button
+                    type="submit"
+                    class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+                  >
                     Set as Default
                   </button>
                 </form>
@@ -145,50 +173,74 @@
           </div>
 
           {% if account.pots_list or not account.is_pot %}
-            <div class="pots-container">
-              <div class="pots-header">
-                <span>Locked Goals & Savings Pots</span>
-                <button type="button" class="link" style="font-size: 0.78rem;" onclick="openAccountModal(null, {{ account.id }}, true)">
-                  ➕ Add Pot
+            <div class="flex flex-col gap-2 border-l-2 border-[#ea580c] dark:border-[#ff6b00] ml-2 pl-3">
+              <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span>Locked Goals &amp; Savings Pots</span>
+                <button
+                  type="button"
+                  onclick="openAccountModal(null, {{ account.id }}, true)"
+                  class="bg-transparent border-0 text-xs font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline cursor-pointer p-0"
+                >
+                  &#10133; Add Pot
                 </button>
               </div>
 
               {% if not account.pots_list %}
-                <div class="muted" style="font-size: 0.8rem; padding: 0.35rem 0;">
+                <div class="py-0.5 text-xs text-slate-500 dark:text-slate-400">
                   No pots under this account. Create one for M-Shwari Lock Savings or goal buckets.
                 </div>
               {% else %}
                 {% for pot in account.pots_list %}
-                  <div class="pot-row">
-                    <div class="pot-meta">
-                      <span class="pot-icon">🍯</span>
+                  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#1c2736] px-3 py-2 hover:border-slate-300 dark:hover:border-[#26354a] transition-colors">
+                    <div class="flex items-center gap-2">
+                      <span class="text-base">&#127855;</span>
                       <div>
-                        <span class="pot-name">{{ pot.name }}</span>
-                        <small class="muted"> &bull; {{ pot.kind|kind_name }}</small>
+                        <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">{{ pot.name }}</span>
+                        <small class="ml-1 text-xs text-slate-400 dark:text-slate-50">&bull; {{ pot.kind|kind_name }}</small>
                         {% if pot.minimum_balance > 0 %}
-                          <div class="muted" style="font-size: 0.75rem;">Min: {{ pot.minimum_balance|money }}</div>
+                          <div class="text-xs text-slate-400 dark:text-slate-500">Min: {{ pot.minimum_balance|money }}</div>
                         {% endif %}
                       </div>
                     </div>
 
-                    <div class="between" style="gap: 1rem;">
-                      <span class="pot-balance">{{ pot.balance|money }}</span>
-                      <div class="row-actions">
-                        <button type="button" class="btn-action-pill" onclick="openTransferModal({{ account.id }}, {{ pot.id }})" {% if account.balance <= 0 %}disabled title="No available balance in parent account"{% endif %}>
+                    <div class="flex flex-wrap items-center justify-between sm:justify-end gap-2.5">
+                      <span class="text-sm font-bold text-sky-600 dark:text-sky-400">{{ pot.balance|money }}</span>
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onclick="openTransferModal({{ account.id }}, {{ pot.id }})"
+                          {% if account.balance <= 0 %}disabled title="No available balance in parent account"{% endif %}
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#233144] transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
+                        >
                           Deposit
                         </button>
-                        <button type="button" class="btn-action-pill" onclick="openTransferModal({{ pot.id }}, {{ account.id }})" {% if pot.balance <= 0 %}disabled title="No available balance in pot"{% endif %}>
+                        <button
+                          type="button"
+                          onclick="openTransferModal({{ pot.id }}, {{ account.id }})"
+                          {% if pot.balance <= 0 %}disabled title="No available balance in pot"{% endif %}
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#233144] transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
+                        >
                           Withdraw
                         </button>
-                        <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ pot.id }})">
-                          ⚖️
+                        <button
+                          type="button"
+                          onclick="openReconcileModal({{ pot.id }})"
+                          aria-label="Reconcile {{ pot.name }}"
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+                        >
+                          &#9878;&#65039;
                         </button>
-                        <button type="button" class="btn-action-pill" onclick="openAccountModal({{ pot.id }})">
-                          ✏️
+                        <button
+                          type="button"
+                          onclick="openAccountModal({{ pot.id }})"
+                          aria-label="Edit {{ pot.name }}"
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#233144] transition-colors"
+                        >
+                          &#9999;&#65039;
                         </button>
-                        <form method="post" action="{% url 'accounts_delete' pot.id %}" style="margin: 0;" onsubmit="return confirm('Delete this pot and its transactions?');">
+                        <form method="post" action="{% url 'accounts_delete' pot.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Delete this pot and its transactions?');">
                           {% csrf_token %}
-                          <button type="submit" class="link" style="color: var(--text-danger);">Delete</button>
+                          <button type="submit" class="bg-transparent border-0 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer px-1.5 py-1 leading-none">Delete</button>
                         </form>
                       </div>
                     </div>
@@ -198,43 +250,60 @@
             </div>
           {% endif %}
 
-          <div class="account-actions-bar">
-            <button type="button" class="btn-action-pill" onclick="openAccountModal({{ account.id }})">
-              ✏️ Edit Account
+          <div class="flex flex-wrap items-center justify-end gap-1.5 pt-2.5 border-t border-slate-200 dark:border-white/[0.06]">
+            <button
+              type="button"
+              onclick="openAccountModal({{ account.id }})"
+              class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+            >
+              &#9999;&#65039; Edit Account
             </button>
-            <form method="post" action="{% url 'accounts_archive' account.id %}" style="margin: 0;" onsubmit="return confirm('Archive account? It will be hidden from new transaction entries while preserving history.');">
+            <form method="post" action="{% url 'accounts_archive' account.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Archive account? It will be hidden from new transaction entries while preserving history.');">
               {% csrf_token %}
-              <button type="submit" class="btn-action-pill">🗄️ Archive / Hide</button>
+              <button
+                type="submit"
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+              >&#128452;&#65039; Archive / Hide</button>
             </form>
-            <form method="post" action="{% url 'accounts_delete' account.id %}" style="margin: 0;" onsubmit="return confirm('Are you sure you want to delete this account and all associated transactions?');">
+            <form method="post" action="{% url 'accounts_delete' account.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Are you sure you want to delete this account and all associated transactions?');">
               {% csrf_token %}
-              <button type="submit" class="link" style="color: var(--text-danger);">Delete</button>
+              <button type="submit" class="bg-transparent border-0 text-xs font-semibold text-red-600 dark:text-red-400 hover:underline cursor-pointer px-2 py-1 leading-none">Delete</button>
             </form>
           </div>
         </div>
       {% endfor %}
 
       {% for account in standalone_pots %}
-        <div class="account-card">
-          <div class="account-header-row">
-            <div class="account-title-group">
-              <div class="account-avatar">🍯</div>
-              <div class="account-title-text">
-                <h3 class="account-name">
+        <div class="flex flex-col gap-3 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm hover:border-slate-300 dark:hover:border-[#26354a] transition-all">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-[#233144] flex items-center justify-center text-xl shrink-0">
+                &#127855;
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <h3 class="m-0 flex flex-wrap items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-50">
                   {{ account.name }}
-                  <span class="badge badge-pot">Savings Pot</span>
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">Savings Pot</span>
                 </h3>
-                <div class="account-subtitle">
+                <div class="text-xs text-slate-400 dark:text-slate-50">
                   <span>Balance: {{ account.balance|money }}</span>
                 </div>
               </div>
             </div>
-            <div class="row-actions">
-              <button type="button" class="btn-action-pill btn-reconcile" onclick="openReconcileModal({{ account.id }})">
-                ⚖️ Reconcile
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onclick="openReconcileModal({{ account.id }})"
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:border-sky-500 hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
+              >
+                &#9878;&#65039; Reconcile
               </button>
-              <button type="button" class="btn-action-pill" onclick="openAccountModal({{ account.id }})">
-                ✏️ Edit
+              <button
+                type="button"
+                onclick="openAccountModal({{ account.id }})"
+                class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+              >
+                &#9999;&#65039; Edit
               </button>
             </div>
           </div>
@@ -245,41 +314,45 @@
 
   <!-- Archived Accounts Section -->
   {% if show_archived and archived_accounts %}
-    <section style="margin-top: 2.5rem;">
-      <h2 style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 1rem;">
-        🗄️ Archived Accounts (Hidden from Daily Spends)
+    <section class="pt-2 space-y-3">
+      <h2 class="m-0 text-base font-bold text-slate-500 dark:text-slate-400">
+        &#128452;&#65039; Archived Accounts (Hidden from Daily Spends)
       </h2>
-      <div class="accounts-grid">
+      <div class="flex flex-col gap-3">
         {% for account in archived_accounts %}
-          <div class="account-card is-archived">
-            <div class="account-header-row">
-              <div class="account-title-group">
-                <div class="account-avatar">{{ account.kind|kind_icon }}</div>
-                <div class="account-title-text">
-                  <h3 class="account-name">
+          <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm opacity-70">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-[#233144] flex items-center justify-center text-xl shrink-0">
+                  {{ account.kind|kind_icon }}
+                </div>
+                <div class="flex flex-col gap-0.5">
+                  <h3 class="m-0 flex flex-wrap items-center gap-2 text-base font-bold text-slate-900 dark:text-slate-50">
                     {{ account.name }}
-                    <span class="badge badge-inactive">Archived</span>
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30">Archived</span>
                   </h3>
-                  <div class="account-subtitle">
+                  <div class="text-xs text-slate-400 dark:text-slate-500">
                     Past historical transactions are preserved for budget reports.
                   </div>
                 </div>
               </div>
 
-              <div class="between" style="gap: 1rem;">
-                <span class="balance-amount">{{ account.balance|money }}</span>
-                <div class="row-actions">
-                  <form method="post" action="{% url 'accounts_unarchive' account.id %}" style="margin: 0;">
+              <div class="flex flex-wrap items-center gap-3">
+                <span class="text-lg font-bold text-slate-900 dark:text-slate-50">{{ account.balance|money }}</span>
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <form method="post" action="{% url 'accounts_unarchive' account.id %}" class="m-0 inline-flex items-center">
                     {% csrf_token %}
-                    <button type="submit" class="btn-orange-pill" style="font-size: 0.8rem; padding: 0.35rem 0.9rem;">
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3.5 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
+                    >
                       Unarchive / Restore
                     </button>
                   </form>
                   <a
                     href="{% url 'accounts' %}?insights={{ account.id }}&timeframe=month&show_archived=1"
-                    class="btn-action-pill btn-insights"
-                    style="text-decoration: none;"
-                  >📊 History</a>
+                    class="inline-flex items-center justify-center gap-1 whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:border-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                  >&#128202; History</a>
                 </div>
               </div>
             </div>
@@ -290,110 +363,110 @@
   {% endif %}
 
   <!-- 1. ADD / EDIT ACCOUNT MODAL -->
-  <div id="account-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3 id="acct-modal-title" class="modal-title">Add New Account</h3>
-        <button type="button" class="modal-close-btn" data-modal-close="account-modal">&times;</button>
+  <div id="account-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h3 id="acct-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Add New Account</h3>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="account-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'accounts_save' %}">
+      <form method="post" action="{% url 'accounts_save' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
         <input type="hidden" name="id" id="acct-id" value="">
 
-        <div class="form-group">
-          <label class="form-label" for="acct-name">Account Name *</label>
-          <input id="acct-name" name="name" class="form-input" placeholder="e.g. M-Pesa, KCB Checking, Cash Float" required />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-name">Account Name *</label>
+          <input id="acct-name" name="name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. M-Pesa, KCB Checking, Cash Float" required />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="acct-kind">Account Type *</label>
-          <select id="acct-kind" name="kind" class="form-select">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-kind">Account Type *</label>
+          <select id="acct-kind" name="kind" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             {% for k in account_kinds %}
               <option value="{{ k.id }}">{{ k.icon }} {{ k.name }}</option>
             {% endfor %}
           </select>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="acct-number">Account Number / Till / Paybill (Optional)</label>
-          <input id="acct-number" name="account_number" class="form-input" placeholder="e.g. 1234567890 or Till 882910" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-number">Account Number / Till / Paybill (Optional)</label>
+          <input id="acct-number" name="account_number" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. 1234567890 or Till 882910" />
         </div>
 
-        <div class="row" style="margin: 0 0 1rem 0;">
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="acct-opening">Opening Starting Balance</label>
-            <input id="acct-opening" name="opening_balance" type="number" step="0.01" class="form-input" placeholder="0.00" />
-            <span class="form-hint">Does not distort monthly income analytics.</span>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-opening">Opening Starting Balance</label>
+            <input id="acct-opening" name="opening_balance" type="number" step="0.01" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="0.00" />
+            <span class="text-xs text-slate-400 dark:text-slate-500">Does not distort monthly income analytics.</span>
           </div>
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="acct-as-of">As-Of Date</label>
-            <input id="acct-as-of" name="as_of_date" type="date" class="form-input" value="{{ today_iso }}" />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-as-of">As-Of Date</label>
+            <input id="acct-as-of" name="as_of_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" />
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="acct-min">Minimum Balance Alert Threshold ({{ currency }})</label>
-          <input id="acct-min" name="minimum_balance" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 1000.00 (Leave 0 for no alert)" />
-          <span class="form-hint">Get alerted if your balance drops below this threshold.</span>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-min">Minimum Balance Alert Threshold ({{ currency }})</label>
+          <input id="acct-min" name="minimum_balance" type="number" step="0.01" min="0" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. 1000.00 (Leave 0 for no alert)" />
+          <span class="text-xs text-slate-400 dark:text-slate-500">Get alerted if your balance drops below this threshold.</span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="acct-parent">Parent Account (For Sub-Accounts / Pots)</label>
-          <select id="acct-parent" name="parent" class="form-select">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="acct-parent">Parent Account (For Sub-Accounts / Pots)</label>
+          <select id="acct-parent" name="parent" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="">-- Standalone Account (No Parent) --</option>
             {% for p in parent_options %}
               <option value="{{ p.id }}">{{ p.kind|kind_icon }} {{ p.name }} (Parent)</option>
             {% endfor %}
           </select>
-          <span class="form-hint">Nest locked goals (like M-Shwari Lock) under a main wallet.</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Nest locked goals (like M-Shwari Lock) under a main wallet.</span>
         </div>
 
-        <label class="form-checkbox-row">
-          <input id="acct-is-pot" name="is_pot" type="checkbox" />
+        <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+          <input id="acct-is-pot" name="is_pot" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" />
           <span>This is a savings pot / locked goal</span>
         </label>
 
-        <label class="form-checkbox-row">
-          <input id="acct-is-default" name="is_default" type="checkbox" />
+        <label class="flex items-center gap-2.5 cursor-pointer text-sm text-slate-900 dark:text-slate-50">
+          <input id="acct-is-default" name="is_default" type="checkbox" class="w-4 h-4 accent-[#ff6b00]" />
           <span>Set as primary default account (pre-selected in new spends)</span>
         </label>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="account-modal">Cancel</button>
-          <button type="submit" id="acct-submit-btn" class="btn-orange-pill">Create Account</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="account-modal">Cancel</button>
+          <button type="submit" id="acct-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Create Account</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- 2. TRANSFER MODAL -->
-  <div id="transfer-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3 class="modal-title">🔁 Transfer Money</h3>
-        <button type="button" class="modal-close-btn" data-modal-close="transfer-modal">&times;</button>
+  <div id="transfer-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h3 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">&#128257; Transfer Money</h3>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="transfer-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'accounts_transfer' %}">
+      <form method="post" action="{% url 'accounts_transfer' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
 
-        <div class="row" style="margin: 0 0 1rem 0;">
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="xfer-from">From Account (Source) *</label>
-            <select id="xfer-from" name="from_account" class="form-select{% if not funded_accounts %} hidden{% endif %}"{% if funded_accounts %} required{% endif %}>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-from">From Account (Source) *</label>
+            <select id="xfer-from" name="from_account" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500{% if not funded_accounts %} hidden{% endif %}"{% if funded_accounts %} required{% endif %}>
               <option value="" disabled>Select source account</option>
               {% for a in funded_accounts %}
                 <option value="{{ a.id }}" data-balance="{{ a.balance|floatformat:2 }}">{{ a.name }} ({{ a.balance|money }})</option>
               {% endfor %}
             </select>
-            <p id="no-funded-xfer-msg" class="muted{% if funded_accounts %} hidden{% endif %}" style="margin: 0.25rem 0 0; font-size: 0.85rem;">
+            <p id="no-funded-xfer-msg" class="m-0 mt-1 text-sm text-slate-600 dark:text-slate-400{% if funded_accounts %} hidden{% endif %}">
               No accounts with available balance to transfer from.
             </p>
           </div>
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="xfer-to">To Account (Destination) *</label>
-            <select id="xfer-to" name="to_account" class="form-select" required>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-to">To Account (Destination) *</label>
+            <select id="xfer-to" name="to_account" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
               <option value="" disabled>Select destination account</option>
               {% for a in active_accounts %}
                 <option value="{{ a.id }}">{{ a.name }} ({{ a.balance|money }})</option>
@@ -402,106 +475,106 @@
           </div>
         </div>
 
-        <div class="row" style="margin: 0 0 1rem 0;">
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="xfer-amount">Transfer Amount ({{ currency }}) *</label>
-            <input id="xfer-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
-            <div id="xfer-amount-hint" class="form-hint"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-amount">Transfer Amount ({{ currency }}) *</label>
+            <input id="xfer-amount" name="amount" type="number" step="0.01" min="0.01" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="0.00" required />
+            <div id="xfer-amount-hint" class="text-xs text-slate-400 dark:text-slate-500"></div>
           </div>
-          <div class="form-group" style="flex: 1; margin: 0;">
-            <label class="form-label" for="xfer-fee">Transaction Fee / Tariff ({{ currency }})</label>
-            <input id="xfer-fee" name="fee" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 13.00 or 25.00" />
-            <span class="form-hint">M-Pesa or bank transfer charge</span>
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-fee">Transaction Fee / Tariff ({{ currency }})</label>
+            <input id="xfer-fee" name="fee" type="number" step="0.01" min="0" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. 13.00 or 25.00" />
+            <span class="text-xs text-slate-400 dark:text-slate-500">M-Pesa or bank transfer charge</span>
           </div>
         </div>
 
-        <div id="xfer-fee-bcat-group" class="form-group hidden">
-          <label class="form-label" for="xfer-fee-budget-category">Fee / Charge Budget Category (Optional)</label>
-          <select id="xfer-fee-budget-category" name="fee_budget_category" class="form-select">
+        <div id="xfer-fee-bcat-group" class="hidden flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-fee-budget-category">Fee / Charge Budget Category (Optional)</label>
+          <select id="xfer-fee-budget-category" name="fee_budget_category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="">-- Do not track fee in Budget Plan --</option>
             {% for bc in budget_categories %}
               <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
             {% endfor %}
           </select>
-          <span class="form-hint">Track this transfer charge under a Budget Category in your Budget Plan.</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Track this transfer charge under a Budget Category in your Budget Plan.</span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="xfer-date">Date</label>
-          <input id="xfer-date" name="transaction_date" type="date" class="form-input" value="{{ today_iso }}" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-date">Date</label>
+          <input id="xfer-date" name="transaction_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="xfer-narrative">Description / Reference Note</label>
-          <input id="xfer-narrative" name="narrative" class="form-input" placeholder="e.g. Float top-up, M-Pesa to Bank" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="xfer-narrative">Description / Reference Note</label>
+          <input id="xfer-narrative" name="narrative" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. Float top-up, M-Pesa to Bank" />
         </div>
 
-        <div id="xfer-preview" class="transfer-preview-box hidden"></div>
+        <div id="xfer-preview" class="hidden flex flex-col gap-1.5 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#1c2736] px-4 py-3 text-sm text-slate-600 dark:text-slate-300"></div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="transfer-modal">Cancel</button>
-          <button type="submit" id="xfer-submit-btn" class="btn-orange-pill">Complete Transfer</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="transfer-modal">Cancel</button>
+          <button type="submit" id="xfer-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Complete Transfer</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- 3. RECONCILE MODAL -->
-  <div id="reconcile-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h3 id="rec-modal-title" class="modal-title">⚖️ Reconcile Balance</h3>
-        <button type="button" class="modal-close-btn" data-modal-close="reconcile-modal">&times;</button>
+  <div id="reconcile-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h3 id="rec-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">&#9878;&#65039; Reconcile Balance</h3>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="reconcile-modal">&times;</button>
       </div>
 
-      <form method="post" id="reconcile-form" action="">
+      <form method="post" id="reconcile-form" action="" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
-        <p class="muted" style="font-size: 0.88rem; margin: 0 0 1rem 0;">
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
           Enter the exact actual balance shown in your M-Pesa SMS or banking app. The app generates a silent "Balance Adjustment" transaction for any forgotten pennies or untracked tariffs.
         </p>
 
-        <div class="form-group">
-          <label class="form-label">Current App Balance</label>
-          <input id="rec-current" class="form-input" disabled style="opacity: 0.8; font-weight: 600;" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400">Current App Balance</label>
+          <input id="rec-current" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-50 opacity-80 cursor-not-allowed" disabled />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="rec-actual">Actual Balance (From Bank App or M-Pesa SMS) *</label>
-          <input id="rec-actual" name="actual_balance" type="number" step="0.01" class="form-input" placeholder="e.g. 5420.50" required />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="rec-actual">Actual Balance (From Bank App or M-Pesa SMS) *</label>
+          <input id="rec-actual" name="actual_balance" type="number" step="0.01" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. 5420.50" required />
         </div>
 
-        <div id="rec-preview" class="transfer-preview-box">
-          <div class="between">
+        <div id="rec-preview" class="flex flex-col gap-1.5 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#1c2736] px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+          <div class="flex items-center justify-between gap-3">
             <span>Adjustment Difference:</span>
-            <strong id="rec-diff-val">0.00</strong>
+            <strong id="rec-diff-val" class="font-bold text-slate-900 dark:text-slate-50">0.00</strong>
           </div>
-          <div id="rec-diff-hint" style="font-size: 0.8rem; margin-top: 0.2rem;"></div>
+          <div id="rec-diff-hint" class="text-xs text-slate-500 dark:text-slate-400"></div>
         </div>
 
-        <div class="form-group" style="margin-top: 1rem;">
-          <label class="form-label" for="rec-date">As-Of Date</label>
-          <input id="rec-date" name="date" type="date" class="form-input" value="{{ today_iso }}" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="rec-date">As-Of Date</label>
+          <input id="rec-date" name="date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="rec-notes">Reconciliation Note (Optional)</label>
-          <input id="rec-notes" name="notes" class="form-input" placeholder="e.g. Reconciled with KCB mobile banking SMS" />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="rec-notes">Reconciliation Note (Optional)</label>
+          <input id="rec-notes" name="notes" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. Reconciled with KCB mobile banking SMS" />
         </div>
 
-        <div id="rec-bcat-group" class="form-group hidden">
-          <label class="form-label" for="rec-budget-category">Budget Category for Deficit (Optional)</label>
-          <select id="rec-budget-category" name="budget_category" class="form-select">
+        <div id="rec-bcat-group" class="hidden flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="rec-budget-category">Budget Category for Deficit (Optional)</label>
+          <select id="rec-budget-category" name="budget_category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="">-- Silent adjustment (Not linked to Budget Plan) --</option>
             {% for bc in budget_categories %}
               <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
             {% endfor %}
           </select>
-          <span class="form-hint">Link this deficit adjustment to a Budget Category to capture it in your Budget Plan.</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Link this deficit adjustment to a Budget Category to capture it in your Budget Plan.</span>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="reconcile-modal">Cancel</button>
-          <button type="submit" class="btn-orange-pill">Confirm & Apply Adjustment</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="reconcile-modal">Cancel</button>
+          <button type="submit" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Confirm &amp; Apply Adjustment</button>
         </div>
       </form>
     </div>
@@ -509,95 +582,93 @@
 
   <!-- 4. ACCOUNT INSIGHTS MODAL (Server-Rendered when ?insights=<id>) -->
   {% if insights_account and insights_data %}
-    <div id="insights-modal" class="modal-overlay">
-      <div class="modal-dialog" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
-        <div class="modal-header">
+    <div id="insights-modal" class="modal-overlay fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+      <div class="w-full max-w-[680px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+        <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
           <div>
-            <h3 class="modal-title">📊 {{ insights_account.name }} Insights</h3>
-            <span class="muted" style="font-size: 0.82rem;">
+            <h3 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">&#128202; {{ insights_account.name }} Insights</h3>
+            <span class="text-xs text-slate-500 dark:text-slate-400">
               {{ insights_account.kind|kind_name }} &bull; Current Balance: {{ insights_account.balance|money }}
             </span>
           </div>
-          <a href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}" class="modal-close-btn" style="text-decoration: none;">&times;</a>
+          <a href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md no-underline">&times;</a>
         </div>
 
-        <div class="insights-modal-body">
-          <div class="between" style="border-bottom: 1px solid var(--divider-subtle); padding-bottom: 0.85rem;">
-            <span style="font-weight: 600; font-size: 0.88rem;">Analysis Timeframe:</span>
-            <div class="row-actions">
+        <div class="p-5 sm:p-6 flex flex-col gap-5">
+          <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-white/[0.06] pb-3.5">
+            <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">Analysis Timeframe:</span>
+            <div class="flex items-center gap-2">
               <a
                 href="{% url 'accounts' %}?insights={{ insights_account.id }}&timeframe=month{% if show_archived %}&show_archived=1{% endif %}"
-                class="filter-btn {% if insights_data.timeframe == 'month' %}active{% endif %}"
-                style="text-decoration: none;"
+                class="rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline border transition-colors {% if insights_data.timeframe == 'month' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white border-transparent{% else %}border-slate-300 dark:border-[#26354a] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1c2736]{% endif %}"
               >This Month</a>
               <a
                 href="{% url 'accounts' %}?insights={{ insights_account.id }}&timeframe=all{% if show_archived %}&show_archived=1{% endif %}"
-                class="filter-btn {% if insights_data.timeframe == 'all' %}active{% endif %}"
-                style="text-decoration: none;"
+                class="rounded-full px-3.5 py-1.5 text-xs font-semibold no-underline border transition-colors {% if insights_data.timeframe == 'all' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white border-transparent{% else %}border-slate-300 dark:border-[#26354a] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-[#1c2736]{% endif %}"
               >All Time</a>
             </div>
           </div>
 
-          <div class="insights-kpi-grid">
-            <div class="insight-kpi-box insight-inflow">
-              <span class="label">🟢 Total Inflow</span>
-              <span class="amount">{{ insights_data.inflow.total|money }}</span>
-              <span class="muted" style="font-size: 0.72rem;">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            <div class="flex flex-col gap-1 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] px-4 py-3.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128994; Total Inflow</span>
+              <span class="text-xl font-bold leading-tight text-emerald-600 dark:text-emerald-400">{{ insights_data.inflow.total|money }}</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">
                 Income: {{ insights_data.inflow.income|money }} | Transfers In: {{ insights_data.inflow.transfers_in|money }}
               </span>
             </div>
 
-            <div class="insight-kpi-box insight-outflow">
-              <span class="label">🔴 Total Outflow</span>
-              <span class="amount">{{ insights_data.outflow.total|money }}</span>
-              <span class="muted" style="font-size: 0.72rem;">
+            <div class="flex flex-col gap-1 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] px-4 py-3.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128308; Total Outflow</span>
+              <span class="text-xl font-bold leading-tight text-red-600 dark:text-red-400">{{ insights_data.outflow.total|money }}</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">
                 Expenses: {{ insights_data.outflow.expenses|money }} | Fees: {{ insights_data.outflow.fees|money }}
               </span>
             </div>
 
-            <div class="insight-kpi-box insight-net">
-              <span class="label">⚖️ Net Cash Flow</span>
-              <span class="amount {% if insights_data.net_flow >= 0 %}tag-green{% else %}neg{% endif %}">
+            <div class="flex flex-col gap-1 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] px-4 py-3.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9878;&#65039; Net Cash Flow</span>
+              <span class="text-xl font-bold leading-tight {% if insights_data.net_flow >= 0 %}text-emerald-600 dark:text-emerald-400{% else %}text-red-600 dark:text-red-400{% endif %}">
                 {% if insights_data.net_flow >= 0 %}+{% endif %}{{ insights_data.net_flow|money }}
               </span>
-              <span class="muted" style="font-size: 0.72rem;">Inflow minus Outflow</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">Inflow minus Outflow</span>
             </div>
 
-            <div class="insight-kpi-box insight-daily">
-              <span class="label">⏱️ Avg. Daily Spend</span>
-              <span class="amount">{{ insights_data.average_daily_spend|money }}</span>
-              <span class="muted" style="font-size: 0.72rem;">Average outflow per active day</span>
+            <div class="flex flex-col gap-1 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] px-4 py-3.5">
+              <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9201;&#65039; Avg. Daily Spend</span>
+              <span class="text-xl font-bold leading-tight text-sky-600 dark:text-sky-400">{{ insights_data.average_daily_spend|money }}</span>
+              <span class="text-xs text-slate-500 dark:text-slate-400">Average outflow per active day</span>
             </div>
           </div>
 
-          <div class="flow-ratio-bar-wrapper">
-            <div class="between" style="font-size: 0.82rem;">
-              <span class="tag-green">Inflow ({{ insights_data.inflow.total|money }})</span>
-              <span class="neg">Outflow ({{ insights_data.outflow.total|money }})</span>
+          <div class="flex flex-col gap-1.5">
+            <div class="flex items-center justify-between text-xs font-medium">
+              <span class="text-emerald-600 dark:text-emerald-400">Inflow ({{ insights_data.inflow.total|money }})</span>
+              <span class="text-red-600 dark:text-red-400">Outflow ({{ insights_data.outflow.total|money }})</span>
             </div>
-            <div class="flow-bar">
-              <div class="flow-bar-segment-in" style="width: {{ insights_data.inflow.pct }}%;"></div>
-              <div class="flow-bar-segment-out" style="width: {{ insights_data.outflow.pct }}%;"></div>
+            <div class="h-2.5 rounded-md border border-slate-200 dark:border-[#233144] bg-slate-100 dark:bg-[#0f1622] flex overflow-hidden">
+              <div class="h-full bg-emerald-600 dark:bg-emerald-400 transition-all duration-300" style="width: {{ insights_data.inflow.pct }}%;"></div>
+              <div class="h-full bg-[#ea580c] dark:bg-[#ff6b00] transition-all duration-300" style="width: {{ insights_data.outflow.pct }}%;"></div>
             </div>
           </div>
 
           <div>
-            <h4 style="font-size: 0.95rem; margin: 0 0 0.65rem 0;">🏷️ Biggest Expense Categories for this Wallet</h4>
+            <h4 class="m-0 mb-2.5 text-sm font-bold text-slate-900 dark:text-slate-50">&#127991;&#65039; Biggest Expense Categories for this Wallet</h4>
             {% if not insights_data.top_categories %}
-              <div class="muted" style="font-size: 0.85rem;">No categorized expenses recorded from this account yet.</div>
+              <div class="text-sm text-slate-500 dark:text-slate-400">No categorized expenses recorded from this account yet.</div>
             {% else %}
-              <div class="category-spend-list">
+              <div class="flex flex-col gap-2.5">
                 {% for cat in insights_data.top_categories %}
-                  <div class="category-spend-row">
-                    <div class="category-spend-header">
-                      <span>
+                  <div class="flex flex-col gap-1">
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="text-slate-900 dark:text-slate-100">
                         <strong>{{ cat.name }}</strong>
-                        {% if cat.budget_category %}<small class="muted">[{{ cat.budget_category }}]</small>{% endif %}
+                        {% if cat.budget_category %}<small class="ml-1 text-slate-400 dark:text-slate-500">[{{ cat.budget_category }}]</small>{% endif %}
                       </span>
-                      <span>{{ cat.total_spent|money }} <span class="muted">({{ cat.percentage }}%)</span></span>
+                      <span class="text-slate-900 dark:text-slate-100">{{ cat.total_spent|money }} <span class="text-xs text-slate-400 dark:text-slate-500">({{ cat.percentage }}%)</span></span>
                     </div>
-                    <div class="category-progress-track">
-                      <div class="category-progress-fill" style="width: {{ cat.percentage }}%;"></div>
+                    <div class="h-1.5 rounded bg-slate-100 dark:bg-[#0f1622] overflow-hidden">
+                      <div class="h-full rounded bg-[#ea580c] dark:bg-[#ff6b00]" style="width: {{ cat.percentage }}%;"></div>
                     </div>
                   </div>
                 {% endfor %}
@@ -606,22 +677,22 @@
           </div>
 
           <div>
-            <div class="between" style="margin-bottom: 0.5rem;">
-              <h4 style="font-size: 0.95rem; margin: 0;">📜 Recent Account Activity</h4>
-              <span class="muted" style="font-size: 0.78rem;">Last 15 records</span>
+            <div class="flex items-center justify-between mb-2">
+              <h4 class="m-0 text-sm font-bold text-slate-900 dark:text-slate-50">&#128220; Recent Account Activity</h4>
+              <span class="text-xs text-slate-400 dark:text-slate-500">Last 15 records</span>
             </div>
 
             {% if not insights_data.recent_qs %}
-              <div class="muted" style="font-size: 0.85rem;">No transactions on record for this account.</div>
+              <div class="text-sm text-slate-500 dark:text-slate-400">No transactions on record for this account.</div>
             {% else %}
-              <ul style="display: flex; flex-direction: column; gap: 0.4rem;">
+              <ul class="m-0 p-0 list-none flex flex-col gap-1.5">
                 {% for t in insights_data.recent_qs %}
-                  <li style="padding: 0.55rem 0.85rem; font-size: 0.86rem;">
+                  <li class="flex items-center justify-between gap-3 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] px-3.5 py-2 text-sm">
                     <div>
-                      <strong>
+                      <strong class="font-semibold text-slate-900 dark:text-slate-50">
                         {% if t.description %}{{ t.description }}{% elif t.spent_category %}{{ t.spent_category.name }}{% else %}{{ t.kind }}{% endif %}
                       </strong>
-                      <small class="muted">
+                      <small class="ml-1 text-xs text-slate-400 dark:text-slate-500">
                         &bull; {{ t.transaction_date|date:"Y-m-d" }}
                         {% if t.kind == 'transfer' %}
                           {% if t.account_id == insights_account.id %}
@@ -634,9 +705,9 @@
                       </small>
                     </div>
                     {% if t.kind == 'income' or t.kind == 'transfer' and t.to_account_id == insights_account.id or t.kind == 'adjustment' and t.adjustment_type == 'credit' %}
-                      <div class="tag-green">+{{ t.amount|money }}</div>
+                      <div class="font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">+{{ t.amount|money }}</div>
                     {% else %}
-                      <div class="neg">-{{ t.amount|money }}</div>
+                      <div class="font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">-{{ t.amount|money }}</div>
                     {% endif %}
                   </li>
                 {% endfor %}
@@ -644,8 +715,11 @@
             {% endif %}
           </div>
 
-          <div class="modal-footer" style="margin-top: 1rem;">
-            <a href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}" class="btn-secondary-pill" style="text-decoration: none;">Close</a>
+          <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+            <a
+              href="{% url 'accounts' %}{% if show_archived %}?show_archived=1{% endif %}"
+              class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736]"
+            >Close</a>
           </div>
         </div>
       </div>
@@ -736,12 +810,12 @@
     if (fromAcct && toAcct && amt > 0) {
       var totalDeducted = amt + fee;
       var rem = fromAcct.balance - totalDeducted;
-      var html = '<div>Deducted from <strong>' + fromAcct.name + '</strong>: <span class="neg"><strong>' + window.formatMoney(totalDeducted) + '</strong></span> <span class="muted">(' + window.formatMoney(amt) + ' transfer + ' + window.formatMoney(fee) + ' tariff)</span></div>';
-      html += '<div>Credited to <strong>' + toAcct.name + '</strong>: <span class="tag-green"><strong>' + window.formatMoney(amt) + '</strong></span></div>';
+      var html = '<div>Deducted from <strong class="text-slate-900 dark:text-slate-50">' + fromAcct.name + '</strong>: <span class="text-red-600 dark:text-red-400 font-bold">' + window.formatMoney(totalDeducted) + '</span> <span class="text-slate-500 dark:text-slate-400">(' + window.formatMoney(amt) + ' transfer + ' + window.formatMoney(fee) + ' tariff)</span></div>';
+      html += '<div>Credited to <strong class="text-slate-900 dark:text-slate-50">' + toAcct.name + '</strong>: <span class="text-emerald-600 dark:text-emerald-400 font-bold">' + window.formatMoney(amt) + '</span></div>';
       if (totalDeducted > fromAcct.balance) {
-        html += '<div class="neg" style="margin-top: 0.35rem; font-weight: 600;">⚠️ Insufficient balance: Total deduction (' + window.formatMoney(totalDeducted) + ') exceeds available balance (' + window.formatMoney(fromAcct.balance) + ') in ' + fromAcct.name + '.</div>';
+        html += '<div class="mt-1 font-semibold text-red-600 dark:text-red-400">&#9888;&#65039; Insufficient balance: Total deduction (' + window.formatMoney(totalDeducted) + ') exceeds available balance (' + window.formatMoney(fromAcct.balance) + ') in ' + fromAcct.name + '.</div>';
       } else if (fromAcct.minimum_balance > 0 && rem < fromAcct.minimum_balance) {
-        html += '<div class="neg" style="margin-top: 0.35rem; font-weight: 600;">⚠️ Warning: This transfer will reduce ' + fromAcct.name + ' to ' + window.formatMoney(rem) + ', below its minimum threshold of ' + window.formatMoney(fromAcct.minimum_balance) + '.</div>';
+        html += '<div class="mt-1 font-semibold text-red-600 dark:text-red-400">&#9888;&#65039; Warning: This transfer will reduce ' + fromAcct.name + ' to ' + window.formatMoney(rem) + ', below its minimum threshold of ' + window.formatMoney(fromAcct.minimum_balance) + '.</div>';
       }
       xferPreview.innerHTML = html;
       xferPreview.classList.remove('hidden');
@@ -798,7 +872,9 @@
     var actual = Number(recActual.value || 0);
     var diff = Number((actual - reconcileCurrentBalance).toFixed(2));
     recDiffVal.textContent = (diff > 0 ? '+' : '') + window.formatMoney(diff);
-    recDiffVal.className = diff < 0 ? 'neg' : (diff > 0 ? 'tag-green' : '');
+    recDiffVal.className = diff < 0
+      ? 'font-bold text-red-600 dark:text-red-400'
+      : (diff > 0 ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'font-bold text-slate-900 dark:text-slate-50');
 
     if (recBcatGroup) {
       recBcatGroup.classList.toggle('hidden', !(diff < 0));
@@ -806,11 +882,11 @@
     }
 
     if (diff < 0) {
-      recDiffHint.innerHTML = '<span>📉 Deficit: A debit adjustment of ' + window.formatMoney(Math.abs(diff)) + ' will be recorded to match your actual balance.</span>';
+      recDiffHint.innerHTML = '<span>&#128201; Deficit: A debit adjustment of ' + window.formatMoney(Math.abs(diff)) + ' will be recorded to match your actual balance.</span>';
     } else if (diff > 0) {
-      recDiffHint.innerHTML = '<span>📈 Surplus: A silent credit of ' + window.formatMoney(diff) + ' will be recorded to match your actual balance.</span>';
+      recDiffHint.innerHTML = '<span>&#128200; Surplus: A silent credit of ' + window.formatMoney(diff) + ' will be recorded to match your actual balance.</span>';
     } else {
-      recDiffHint.innerHTML = '<span class="tag-green">✅ Balances match perfectly! No adjustment transaction will be recorded.</span>';
+      recDiffHint.innerHTML = '<span class="font-medium text-emerald-600 dark:text-emerald-400">&#9989; Balances match perfectly! No adjustment transaction will be recorded.</span>';
     }
   }
 

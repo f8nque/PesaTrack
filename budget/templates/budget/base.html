@@ -29,76 +29,107 @@
     };
   </script>
 </head>
-<body data-currency="{{ currency|default:'KES' }}">
-  <div class="app-container">
+<body
+  data-currency="{{ currency|default:'KES' }}"
+  class="m-0 min-h-screen bg-[#f1f5f9] dark:bg-[#0b111a] text-slate-900 dark:text-slate-50 antialiased transition-colors duration-200"
+>
+  <div class="flex flex-col md:flex-row min-h-screen w-full">
     <!-- Mobile Topbar -->
-    <header class="mobile-topbar">
-      <button id="mobile-menu-btn" class="mobile-menu-btn" type="button" aria-label="Open menu">&#9776;</button>
-      <div class="mobile-brand">
-        <div class="brand-avatar-sm">P</div>
-        <span class="mobile-brand-title">Pesa Track</span>
+    <header class="md:hidden sticky top-0 z-[1000] flex items-center justify-between w-full px-4 py-2.5 bg-white dark:bg-[#131b26] border-b border-slate-200 dark:border-[#1e2a3b]">
+      <button
+        id="mobile-menu-btn"
+        type="button"
+        aria-label="Open menu"
+        class="w-[38px] h-[38px] rounded-lg border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] text-slate-900 dark:text-slate-50 flex items-center justify-center text-xl cursor-pointer leading-none"
+      >&#9776;</button>
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-[#ea580c] dark:bg-[#ff6b00] text-white flex items-center justify-center font-bold text-sm">P</div>
+        <span class="font-bold text-[0.95rem] text-slate-900 dark:text-slate-50">Pesa Track</span>
         {% for item in nav_tabs %}
           {% if item.id == active_tab %}
-            <span class="mobile-tab-badge">{{ item.label }}</span>
+            <span class="px-2 py-0.5 rounded-full text-[0.72rem] font-semibold bg-orange-500/15 text-[#ea580c] dark:text-[#ff6b00] border border-orange-500/30 max-w-[130px] truncate">{{ item.label }}</span>
           {% endif %}
         {% endfor %}
       </div>
-      <button type="button" class="mobile-theme-btn" onclick="toggleAppTheme()" aria-label="Toggle theme">
+      <button
+        type="button"
+        onclick="toggleAppTheme()"
+        aria-label="Toggle theme"
+        class="w-9 h-9 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] flex items-center justify-center text-[0.95rem] cursor-pointer"
+      >
         <span data-theme-icon>☀️</span>
       </button>
     </header>
 
-    <div id="sidebar-backdrop" class="sidebar-backdrop hidden"></div>
+    <div id="sidebar-backdrop" class="hidden md:hidden fixed inset-0 z-[1040] bg-black/65 backdrop-blur-sm"></div>
 
     <!-- Left Side Panel Navigation -->
-    <aside id="app-sidebar" class="sidebar">
-      <div class="sidebar-brand">
-        <div style="display: flex; align-items: center; gap: 0.85rem; flex: 1;">
-          <div class="brand-avatar">P</div>
-          <div class="brand-text">
-            <span class="brand-title">Pesa Track</span>
+    <aside
+      id="app-sidebar"
+      class="w-[275px] max-w-[82vw] md:w-[250px] md:max-w-none bg-white dark:bg-[#131b26] border-r border-slate-200 dark:border-[#1e2a3b] flex flex-col px-5 py-6 shrink-0 min-h-screen fixed md:static top-0 left-0 bottom-0 z-[1050] -translate-x-full md:translate-x-0 [&.mobile-open]:translate-x-0 shadow-2xl md:shadow-none transition-transform md:transition-colors duration-200"
+    >
+      <div class="flex items-center gap-3.5 px-2 pt-2 pb-7">
+        <div class="flex items-center gap-3.5 flex-1">
+          <div class="w-[38px] h-[38px] rounded-full bg-[#ea580c] dark:bg-[#ff6b00] text-white flex items-center justify-center font-bold text-lg shadow-[0_4px_10px_rgba(255,107,0,0.35)] shrink-0">P</div>
+          <div class="flex flex-col">
+            <span class="text-[1.1rem] font-bold text-slate-900 dark:text-slate-50 tracking-tight">Pesa Track</span>
           </div>
         </div>
-        <button id="mobile-close-btn" class="mobile-close-btn" type="button" aria-label="Close menu">&times;</button>
+        <button
+          id="mobile-close-btn"
+          type="button"
+          aria-label="Close menu"
+          class="md:hidden bg-transparent border-0 text-slate-600 dark:text-slate-400 text-[1.8rem] leading-none cursor-pointer px-1.5 py-0.5 rounded-md"
+        >&times;</button>
       </div>
 
-      <nav class="sidebar-nav">
+      <nav class="flex flex-col gap-1.5 flex-1">
         {% for item in nav_tabs %}
-          <a href="{% url item.url_name %}" class="nav-item {% if active_tab == item.id %}active{% endif %}">
-            <span class="nav-label">{{ item.label }}</span>
+          <a
+            href="{% url item.url_name %}"
+            class="w-full text-left no-underline text-[0.95rem] px-5 py-2.5 rounded-full transition-all flex items-center {% if active_tab == item.id %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-[0_4px_12px_rgba(255,107,0,0.3)]{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+          >
+            <span>{{ item.label }}</span>
           </a>
         {% endfor %}
       </nav>
 
-      <div class="sidebar-footer">
-        <button type="button" class="theme-toggle-btn" onclick="toggleAppTheme()">
-          <span class="theme-icon" data-theme-icon>☀️</span>
-          <span class="theme-text" data-theme-text>Light Mode</span>
+      <div class="pt-5 border-t border-slate-200 dark:border-white/10 flex flex-col gap-3.5">
+        <button
+          type="button"
+          onclick="toggleAppTheme()"
+          class="w-full bg-white dark:bg-[#16202c] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] hover:bg-slate-50 dark:hover:bg-white/5 rounded-full py-2 px-4 text-slate-900 dark:text-slate-50 text-[0.85rem] font-semibold cursor-pointer flex items-center justify-center gap-2 shadow-sm transition-all"
+        >
+          <span data-theme-icon>☀️</span>
+          <span data-theme-text>Light Mode</span>
         </button>
 
-        <div class="footer-row">
-          <div class="version-text">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-slate-400 dark:text-slate-500">
             Budget Management v1.0
             {% if request.user.is_authenticated %}
               &bull; {{ request.user.username }}
             {% endif %}
           </div>
-          <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+          <form method="post" action="{% url 'logout' %}" class="m-0">
             {% csrf_token %}
-            <button type="submit" class="sign-out-btn">Sign out</button>
+            <button
+              type="submit"
+              class="bg-transparent border border-slate-300 dark:border-[#26354a] rounded-full text-slate-600 dark:text-slate-400 px-3 py-1 text-xs cursor-pointer hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 hover:border-red-500/30 transition-all"
+            >Sign out</button>
           </form>
         </div>
       </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="main-content">
+    <main class="flex-1 min-w-0 px-3.5 pt-4 pb-8 md:px-10 md:py-8 bg-[#f1f5f9] dark:bg-[#0b111a] overflow-y-auto overflow-x-hidden transition-colors duration-200">
       {% if messages %}
-        <div class="flash-messages">
+        <div class="flex flex-col gap-2 mb-5">
           {% for message in messages %}
-            <div class="flash-alert flash-{{ message.tags|default:'info' }}">
+            <div class="flex items-center justify-between gap-3 px-4 py-3 rounded-[10px] text-sm font-medium border {% if 'success' in message.tags %}bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30{% elif 'error' in message.tags %}bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/35{% else %}bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30{% endif %}">
               <span>{{ message }}</span>
-              <button type="button" class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+              <button type="button" class="bg-transparent border-0 text-current text-lg cursor-pointer leading-none" onclick="this.parentElement.remove()">&times;</button>
             </div>
           {% endfor %}
         </div>

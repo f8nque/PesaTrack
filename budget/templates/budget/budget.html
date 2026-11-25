@@ -4,23 +4,28 @@
 {% block title %}Budget Plan — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="budget-page">
+<div class="space-y-4">
   <!-- Top Header -->
-  <div class="page-header between-header">
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="page-title">Budget Management</h1>
-      <p class="page-subtitle">
-        Display organized by <span class="tag-cyan">Budget Grouping</span> (Priority 1-10) with
-        <span class="tag-orange">Inputted Budget Amount</span> vs <span class="tag-green">Cumulated Items Allocation</span>
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Budget Management</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
+        Display organized by <span class="font-semibold text-sky-600 dark:text-sky-400">Budget Grouping</span> (Priority 1-10) with
+        <span class="font-semibold text-orange-600 dark:text-[#ff6b00]">Inputted Budget Amount</span> vs <span class="font-semibold text-emerald-600 dark:text-emerald-400">Cumulated Items Allocation</span>
       </p>
     </div>
 
-    <div class="header-actions">
+    <div class="flex flex-wrap items-center gap-2.5">
       {% if budgets %}
-        <form method="get" action="{% url 'budget' %}" style="margin: 0;">
-          <select name="budget" class="form-select budget-select" onchange="this.form.submit()" aria-label="Select Budget">
+        <form method="get" action="{% url 'budget' %}" class="m-0 inline-flex items-center">
+          <select
+            name="budget"
+            onchange="this.form.submit()"
+            aria-label="Select Budget"
+            class="rounded-full border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#16202c] px-4 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500 cursor-pointer"
+          >
             {% for b in budgets %}
-              <option value="{{ b.id }}" {% if current_budget and b.id == current_budget.id %}selected{% endif %}>
+              <option value="{{ b.id }}" class="bg-white dark:bg-[#16202c] text-slate-900 dark:text-slate-50" {% if current_budget and b.id == current_budget.id %}selected{% endif %}>
                 {{ b.name }} ({{ b.start_date|date:"Y-m-d" }})
               </option>
             {% endfor %}
@@ -28,155 +33,176 @@
         </form>
       {% endif %}
 
-      <button type="button" class="btn-orange-pill" onclick="openCreateBudgetModal()">
+      <button
+        type="button"
+        onclick="openCreateBudgetModal()"
+        class="inline-flex items-center justify-center gap-1.5 rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+      >
         + Create Budget
       </button>
     </div>
   </div>
 
   {% if not budgets %}
-    <div class="empty-state">
-      <h3>No budgets created yet</h3>
-      <p class="muted">Create your first budget to set an overall allocated amount and plan budget items.</p>
-      <button type="button" class="btn-orange-pill" style="margin-top: 1rem;" onclick="openCreateBudgetModal()">
+    <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+      <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No budgets created yet</h3>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Create your first budget to set an overall allocated amount and plan budget items.</p>
+      <button
+        type="button"
+        onclick="openCreateBudgetModal()"
+        class="mt-4 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+      >
         + Create First Budget
       </button>
     </div>
   {% elif current_budget %}
     <!-- Active Budget Banner -->
-    <div class="budget-banner">
+    <div class="flex flex-wrap items-center justify-between gap-3 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3.5 shadow-sm">
       <div>
-        <h2 class="banner-title">{{ current_budget.name }}</h2>
-        <p class="banner-sub">
+        <h2 class="m-0 mb-0.5 text-lg font-bold text-slate-900 dark:text-slate-50">{{ current_budget.name }}</h2>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
           <span>{{ current_budget.start_date|date:"M j, Y" }} &mdash; {{ current_budget.end_date|date:"M j, Y" }}</span>
           {% if current_budget.description %} &bull; {{ current_budget.description }}{% endif %}
         </p>
       </div>
-      <div class="banner-buttons">
-        <button type="button" class="btn-secondary-pill" onclick="openEditBudgetModal()">Edit Budget</button>
-        <button type="button" class="btn-orange-pill" onclick="openAddItemModal()">+ Add Budget Item</button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onclick="openEditBudgetModal()"
+          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+        >Edit Budget</button>
+        <button
+          type="button"
+          onclick="openAddItemModal()"
+          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
+        >+ Add Budget Item</button>
       </div>
     </div>
 
     <!-- The Two Core Values & Budget Metrics Cards -->
-    <div class="budget-metrics-grid">
-      <div class="metric-card highlight-border">
-        <span class="metric-label">1. Inputted Allocated Budget</span>
-        <div class="metric-value accent-orange">{{ current_budget.allocated_amount|money }}</div>
-        <span class="metric-hint">Target ceiling amount you inputted</span>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div class="flex flex-col rounded-[14px] border border-orange-500/45 bg-white dark:bg-[#16202c] p-4 shadow-[0_4px_15px_rgba(255,107,0,0.08)]">
+        <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">1. Inputted Allocated Budget</span>
+        <div class="mb-0.5 text-2xl font-bold text-orange-600 dark:text-[#ff6b00]">{{ current_budget.allocated_amount|money }}</div>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Target ceiling amount you inputted</span>
       </div>
 
-      <div class="metric-card">
-        <span class="metric-label">2. Cumulated Budget Items</span>
-        <div class="metric-value accent-green">{{ current_budget.total_item_planned|money }}</div>
-        <span class="metric-hint">Computed sum of items planned below</span>
+      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+        <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">2. Cumulated Budget Items</span>
+        <div class="mb-0.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ current_budget.total_item_planned|money }}</div>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Computed sum of items planned below</span>
       </div>
 
-      <div class="metric-card">
-        <span class="metric-label">Unallocated Difference</span>
-        <div class="metric-value {% if current_budget.unallocated_amount < 0 %}text-danger{% endif %}">
+      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+        <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Unallocated Difference</span>
+        <div class="mb-0.5 text-2xl font-bold {% if current_budget.unallocated_amount < 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">
           {{ current_budget.unallocated_amount|money }}
         </div>
-        <span class="metric-hint">
+        <span class="text-xs text-slate-400 dark:text-slate-500">
           {% if current_budget.unallocated_amount >= 0 %}Remaining to allocate{% else %}Over-allocated across items{% endif %}
         </span>
       </div>
 
-      <div class="metric-card">
-        <span class="metric-label">Actual Spent in Period</span>
-        <div class="metric-value">{{ actual_spent_period|money }}</div>
-        <span class="metric-hint">Recorded expenses in timeframe</span>
+      <div class="flex flex-col rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+        <span class="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">Actual Spent in Period</span>
+        <div class="mb-0.5 text-2xl font-bold text-slate-900 dark:text-slate-50">{{ actual_spent_period|money }}</div>
+        <span class="text-xs text-slate-400 dark:text-slate-500">Recorded expenses in timeframe</span>
       </div>
     </div>
 
     <!-- Budget Display Section -->
-    <div class="budget-display-section">
-      <div class="section-title-row">
-        <h2 style="margin: 0;">Budget Items Breakdown</h2>
-        <span class="muted" style="font-size: 0.88rem;">Ordered by Grouping Priority (1: Highest &rarr; 10: Lowest)</span>
+    <div class="flex flex-col gap-3.5">
+      <div class="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Budget Items Breakdown</h2>
+        <span class="text-sm text-slate-600 dark:text-slate-400">Ordered by Grouping Priority (1: Highest &rarr; 10: Lowest)</span>
       </div>
 
       {% if not grouped_items %}
-        <div class="empty-state" style="padding: 2.5rem 1rem;">
-          <p class="muted">No budget items added to this budget yet.</p>
-          <button type="button" class="btn-orange-pill" style="margin-top: 0.5rem;" onclick="openAddItemModal()">
+        <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+          <p class="m-0 text-sm text-slate-600 dark:text-slate-400">No budget items added to this budget yet.</p>
+          <button
+            type="button"
+            onclick="openAddItemModal()"
+            class="mt-3 inline-flex items-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
+          >
             + Add First Budget Item
           </button>
         </div>
       {% else %}
-        <div class="groups-container">
+        <div class="flex flex-col gap-3.5">
           {% for grp in grouped_items %}
-            <div class="group-card">
-              <div class="group-header">
-                <div class="group-info">
-                  <span class="priority-pill priority-{{ grp.priority }}">Priority {{ grp.priority }}</span>
-                  <h3 class="group-name">{{ grp.name }}</h3>
+            <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-hidden shadow-sm">
+              <div class="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50 dark:bg-white/[0.03] px-4 py-2.5 border-b border-slate-200 dark:border-[#233144]">
+                <div class="flex items-center gap-2.5">
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold border {% if grp.priority <= 2 %}bg-red-500/15 text-red-500 dark:text-red-400 border-red-500/35{% elif grp.priority <= 5 %}bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/35{% else %}bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/35{% endif %}">
+                    Priority {{ grp.priority }}
+                  </span>
+                  <h3 class="m-0 text-base font-bold text-slate-900 dark:text-slate-50">{{ grp.name }}</h3>
                 </div>
-                <div class="group-totals">
-                  <span>Planned: <strong>{{ grp.total_planned|money }}</strong></span>
-                  <span>Actual: <strong class="accent-green">{{ grp.total_actual|money }}</strong></span>
+                <div class="flex gap-4 text-sm text-slate-600 dark:text-slate-400">
+                  <span>Planned: <strong class="text-slate-900 dark:text-slate-100">{{ grp.total_planned|money }}</strong></span>
+                  <span>Actual: <strong class="text-emerald-600 dark:text-emerald-400">{{ grp.total_actual|money }}</strong></span>
                 </div>
               </div>
 
-              <div class="data-list-container" style="gap: 0.4rem; padding: 0.75rem 1rem 1rem;">
-                <div class="data-list-header budget-item-cols">
+              <div class="flex flex-col gap-1.5 px-3 py-2.5">
+                <div class="hidden lg:grid lg:grid-cols-[minmax(0,2fr)_auto_auto_minmax(0,1.5fr)_minmax(0,1.6fr)_auto] gap-3 px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 border-b border-slate-200 dark:border-white/[0.06]">
                   <div>Budget Category</div>
-                  <div>Type</div>
-                  <div>Planned Amount</div>
-                  <div>Actual Spent & Progress</div>
+                  <div class="w-24">Type</div>
+                  <div class="w-28 text-right">Planned</div>
+                  <div>Actual Spent &amp; Progress</div>
                   <div>Reason for Update</div>
-                  <div style="text-align: right;">Actions</div>
+                  <div class="w-36 text-right">Actions</div>
                 </div>
 
                 {% for item in grp.items %}
-                  <div class="data-row budget-item-cols">
-                    <div>
-                      <h4 class="row-title">{{ item.budget_category_name }}</h4>
-                      <div class="row-subtitle">Item #{{ item.id }}</div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_auto_auto_minmax(0,1.5fr)_minmax(0,1.6fr)_auto] items-center gap-2.5 lg:gap-3 rounded-[12px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3.5 py-2.5 hover:bg-slate-50 dark:hover:bg-[#1c2736] transition-colors">
+                    <div class="min-w-0">
+                      <h4 class="m-0 text-[0.95rem] font-semibold text-slate-900 dark:text-slate-50 truncate">{{ item.budget_category_name }}</h4>
+                      <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500">Item #{{ item.id }}</div>
                     </div>
 
-                    <div>
-                      <span class="badge {% if item.category_type == 'needs' %}badge-type-budget{% elif item.category_type == 'savings' %}badge-savings{% else %}badge-type-main{% endif %}">
+                    <div class="lg:w-24">
+                      <span class="inline-flex items-center rounded-full px-3 py-0.5 text-xs font-semibold border capitalize whitespace-nowrap {% if item.category_type == 'needs' or item.category_type == 'savings' %}bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35{% else %}bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/35{% endif %}">
                         {{ item.category_type }}
                       </span>
                     </div>
 
-                    <div>
-                      <span class="amount-big" style="font-size: 1.05rem; font-weight: 700;">{{ item.amount|money }}</span>
+                    <div class="sm:text-right lg:w-28">
+                      <span class="text-base font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ item.amount|money }}</span>
                     </div>
 
-                    <div>
-                      <div style="font-size: 0.88rem; margin-bottom: 0.25rem;">
-                        <span class="{% if item.is_over %}text-danger{% endif %}">{{ item.actual_spent|money }}</span>
-                        <small class="muted">({{ item.pct }}%)</small>
+                    <div class="min-w-0">
+                      <div class="text-sm mb-1">
+                        <span class="{% if item.is_over %}text-red-600 dark:text-red-400 font-semibold{% else %}text-slate-900 dark:text-slate-100{% endif %}">{{ item.actual_spent|money }}</span>
+                        <small class="ml-1 text-slate-400 dark:text-slate-500">({{ item.pct }}%)</small>
                       </div>
-                      <div class="track" style="height: 6px;">
-                        <i class="{% if item.is_over %}over{% endif %}" style="width: {{ item.pct }}%;"></i>
+                      <div class="h-1.5 w-full overflow-hidden rounded border border-slate-200 dark:border-[#233144] bg-slate-100 dark:bg-[#0f1622]">
+                        <div class="h-full {% if item.is_over %}bg-red-600 dark:bg-red-400{% else %}bg-orange-600 dark:bg-[#ff6b00]{% endif %}" style="width: {{ item.pct }}%;"></div>
                       </div>
                     </div>
 
-                    <div>
+                    <div class="min-w-0">
                       {% if item.reason %}
-                        <span class="reason-text">{{ item.reason }}</span>
+                        <span class="inline-block rounded bg-slate-100 dark:bg-white/[0.04] px-2 py-0.5 text-xs text-slate-600 dark:text-slate-300">{{ item.reason }}</span>
                       {% else %}
-                        <span class="muted" style="font-size: 0.82rem; font-style: italic;">No update reason</span>
+                        <span class="text-xs italic text-slate-400 dark:text-slate-500">No update reason</span>
                       {% endif %}
                     </div>
 
-                    <div class="row-actions">
+                    <div class="sm:col-span-2 lg:col-span-1 lg:w-36 flex items-center justify-end gap-1.5">
                       <button
                         type="button"
-                        class="btn-orange-pill"
-                        style="padding: 0.35rem 0.85rem; font-size: 0.8rem;"
+                        class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-3 py-1.5 text-xs font-semibold text-white cursor-pointer transition-colors"
                         data-item-id="{{ item.id }}"
                         data-item-bcat="{{ item.budget_category_id }}"
                         data-item-amount="{{ item.amount }}"
                         data-item-reason="{{ item.reason|escapejs }}"
                         onclick="openEditItemModal(this)"
                       >Edit</button>
-                      <form method="post" action="{% url 'budget_item_delete' item.id %}" style="margin: 0;" onsubmit="return confirm('Remove this budget item allocation?');">
+                      <form method="post" action="{% url 'budget_item_delete' item.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Remove this budget item allocation?');">
                         {% csrf_token %}
-                        <button type="submit" class="btn-danger-pill" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">Remove</button>
+                        <button type="submit" class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors">Remove</button>
                       </form>
                     </div>
                   </div>
@@ -190,90 +216,90 @@
   {% endif %}
 
   <!-- Create / Edit Budget Modal -->
-  <div id="budget-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h2 id="budget-modal-title" class="modal-title">Create a Budget</h2>
-        <button type="button" class="modal-close-btn" data-modal-close="budget-modal">&times;</button>
+  <div id="budget-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h2 id="budget-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Create a Budget</h2>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="budget-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'budget_save' %}">
+      <form method="post" action="{% url 'budget_save' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
         <input type="hidden" name="id" id="budget-id" value="">
 
-        <div class="form-group">
-          <label class="form-label" for="budget-name">Budget Name *</label>
-          <input id="budget-name" name="name" class="form-input" placeholder="e.g. November 2026 Monthly Budget" required />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-name">Budget Name *</label>
+          <input id="budget-name" name="name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. November 2026 Monthly Budget" required />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="budget-desc">Budget Description</label>
-          <textarea id="budget-desc" name="description" class="form-textarea" rows="2" placeholder="e.g. Household living expenses, food and utilities"></textarea>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-desc">Budget Description</label>
+          <textarea id="budget-desc" name="description" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" rows="2" placeholder="e.g. Household living expenses, food and utilities"></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-          <div class="form-group">
-            <label class="form-label" for="budget-start">Start Date *</label>
-            <input id="budget-start" name="start_date" type="date" class="form-input" required />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-start">Start Date *</label>
+            <input id="budget-start" name="start_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
           </div>
-          <div class="form-group">
-            <label class="form-label" for="budget-end">End Date *</label>
-            <input id="budget-end" name="end_date" type="date" class="form-input" required />
+          <div class="flex flex-col gap-1.5">
+            <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-end">End Date *</label>
+            <input id="budget-end" name="end_date" type="date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required />
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="budget-allocated">Allocated Budget Amount *</label>
-          <input id="budget-allocated" name="allocated_amount" type="number" step="0.01" min="0" class="form-input" placeholder="e.g. 75000.00" required />
-          <span class="form-hint">This acts as your overall allocated budget amount (distinct from cumulated budget items).</span>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="budget-allocated">Allocated Budget Amount *</label>
+          <input id="budget-allocated" name="allocated_amount" type="number" step="0.01" min="0" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. 75000.00" required />
+          <span class="text-xs text-slate-400 dark:text-slate-500">This acts as your overall allocated budget amount (distinct from cumulated budget items).</span>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="budget-modal">Cancel</button>
-          <button type="submit" id="budget-submit-btn" class="btn-orange-pill">Create Budget</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="budget-modal">Cancel</button>
+          <button type="submit" id="budget-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Create Budget</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Add / Edit Budget Item Modal -->
-  <div id="budget-item-modal" class="modal-overlay hidden">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <h2 id="item-modal-title" class="modal-title">Add Budget Item</h2>
-        <button type="button" class="modal-close-btn" data-modal-close="budget-item-modal">&times;</button>
+  <div id="budget-item-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+    <div class="w-full max-w-[490px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+      <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+        <h2 id="item-modal-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Add Budget Item</h2>
+        <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="budget-item-modal">&times;</button>
       </div>
 
-      <form method="post" action="{% url 'budget_item_save' %}">
+      <form method="post" action="{% url 'budget_item_save' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
         {% csrf_token %}
         <input type="hidden" name="id" id="item-id" value="">
         <input type="hidden" name="budget" value="{% if current_budget %}{{ current_budget.id }}{% endif %}">
 
-        <div class="form-group">
-          <label class="form-label" for="item-bcat">Linked Budget Category *</label>
-          <select id="item-bcat" name="budget_category" class="form-select" required>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="item-bcat">Linked Budget Category *</label>
+          <select id="item-bcat" name="budget_category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
             <option value="" disabled>Select Budget Category</option>
             {% for c in budget_categories %}
               <option value="{{ c.id }}">{{ c.name }} ({{ c.grouping.name }} &bull; Priority: {{ c.grouping.priority }})</option>
             {% endfor %}
           </select>
-          <span class="form-hint">Budget items link directly to a Budget Category.</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Budget items link directly to a Budget Category.</span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="item-amount">Planned Amount *</label>
-          <input id="item-amount" name="amount" type="number" step="0.01" min="0.01" class="form-input" placeholder="0.00" required />
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="item-amount">Planned Amount *</label>
+          <input id="item-amount" name="amount" type="number" step="0.01" min="0.01" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="0.00" required />
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="item-reason">Reason for Update</label>
-          <input id="item-reason" name="reason" type="text" class="form-input" placeholder="e.g. Increased allocation for school holiday visitors" />
-          <span class="form-hint">Records the justification or note for this allocation or change.</span>
+        <div class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="item-reason">Reason for Update</label>
+          <input id="item-reason" name="reason" type="text" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" placeholder="e.g. Increased allocation for school holiday visitors" />
+          <span class="text-xs text-slate-400 dark:text-slate-500">Records the justification or note for this allocation or change.</span>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary-pill" data-modal-close="budget-item-modal">Cancel</button>
-          <button type="submit" id="item-submit-btn" class="btn-orange-pill">Add Item</button>
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+          <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="budget-item-modal">Cancel</button>
+          <button type="submit" id="item-submit-btn" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Add Item</button>
         </div>
       </form>
     </div>

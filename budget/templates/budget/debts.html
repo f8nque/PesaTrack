@@ -4,96 +4,117 @@
 {% block title %}Debts — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="debts-view">
-  <header class="page-header between">
+<div class="space-y-4">
+  <header class="flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="page-title">Debts &amp; Credit Management</h1>
-      <p class="page-subtitle">
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Debts &amp; Credit Management</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Register debtor accounts &amp; credits, record repayment transactions, and analyze borrowing vs payments by year.
       </p>
     </div>
 
-    <div class="row-actions">
-      <button type="button" class="btn-secondary-pill" onclick="openModal('debtor-account-modal')">
-        <span>🧾 Register Debtor Account</span>
+    <div class="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onclick="openModal('debtor-account-modal')"
+        class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+      >
+        <span>&#129534; Register Debtor Account</span>
       </button>
       {% if current_tab != 'credits' %}
-        <a href="{% url 'debts' %}" class="btn-orange-pill" style="text-decoration: none;">
-          <span>➕ Register Credit</span>
+        <a
+          href="{% url 'debts' %}"
+          class="inline-flex items-center justify-center gap-1.5 whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2.5 text-sm font-semibold text-white no-underline transition-colors"
+        >
+          <span>&#10133; Register Credit</span>
         </a>
       {% endif %}
     </div>
   </header>
 
   <!-- Sub-navigation Tabs -->
-  <div class="category-tabs-bar">
-    <a href="{% url 'debts' %}" class="cat-tab-link {% if current_tab == 'credits' %}active{% endif %}">
-      <span class="tab-badge">1</span>
+  <div class="inline-flex flex-wrap max-w-full overflow-x-auto gap-1.5 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-1 shadow-sm">
+    <a
+      href="{% url 'debts' %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'credits' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'credits' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">1</span>
       Credit Registration
-      <span class="tab-count">({{ debts|length }})</span>
+      <span class="text-xs opacity-80">({{ debts|length }})</span>
     </a>
-    <a href="{% url 'debts_payments' %}" class="cat-tab-link {% if current_tab == 'payments' %}active{% endif %}">
-      <span class="tab-badge">2</span>
+    <a
+      href="{% url 'debts_payments' %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'payments' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'payments' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">2</span>
       Payments &amp; Repayments
-      <span class="tab-count">({{ repayments|length }})</span>
+      <span class="text-xs opacity-80">({{ repayments|length }})</span>
     </a>
-    <a href="{% url 'debts_analysis' %}" class="cat-tab-link {% if current_tab == 'analysis' %}active{% endif %}">
-      <span class="tab-badge">3</span>
+    <a
+      href="{% url 'debts_analysis' %}"
+      class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm no-underline transition-colors {% if current_tab == 'analysis' %}bg-[#ea580c] dark:bg-[#ff6b00] text-white font-semibold shadow-sm{% else %}text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-slate-50{% endif %}"
+    >
+      <span class="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full text-[0.72rem] font-bold {% if current_tab == 'analysis' %}bg-white/20 text-white{% else %}bg-slate-200 dark:bg-white/15 text-slate-700 dark:text-slate-200{% endif %}">3</span>
       Debt Analysis
-      <span class="tab-count">({{ analysis.selected_year }})</span>
+      <span class="text-xs opacity-80">({{ analysis.selected_year }})</span>
     </a>
   </div>
 
   <!-- Executive KPI Summary -->
-  <section class="account-kpi-grid">
-    <div class="account-kpi-card kpi-accent">
-      <span class="account-kpi-label">🧾 Total Borrowed</span>
-      <span class="account-kpi-val">{{ total_borrowed|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">Across {{ debts|length }} registered credit{{ debts|length|pluralize }}</span>
+  <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#129534; Total Borrowed</span>
+      <span class="text-2xl font-bold tracking-tight text-orange-600 dark:text-[#ff6b00]">{{ total_borrowed|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">Across {{ debts|length }} registered credit{{ debts|length|pluralize }}</span>
     </div>
 
-    <div class="account-kpi-card kpi-green">
-      <span class="account-kpi-label">✅ Total Repaid</span>
-      <span class="account-kpi-val">{{ total_repaid|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">Active repayment transactions</span>
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9989; Total Repaid</span>
+      <span class="text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">{{ total_repaid|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">Active repayment transactions</span>
     </div>
 
-    <div class="account-kpi-card {% if total_outstanding > 0 %}kpi-warn{% endif %}">
-      <span class="account-kpi-label">⏳ Outstanding Balance</span>
-      <span class="account-kpi-val">{{ total_outstanding|money }}</span>
-      <span class="muted" style="font-size: 0.76rem;">{{ active_credits_count }} active unpaid credit{{ active_credits_count|pluralize }}</span>
+    <div class="flex flex-col gap-1 rounded-[14px] border bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5 {% if total_outstanding > 0 %}border-red-500/40{% else %}border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00]{% endif %}">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9203; Outstanding Balance</span>
+      <span class="text-2xl font-bold tracking-tight {% if total_outstanding > 0 %}text-red-600 dark:text-red-400{% else %}text-slate-900 dark:text-slate-50{% endif %}">{{ total_outstanding|money }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">{{ active_credits_count }} active unpaid credit{{ active_credits_count|pluralize }}</span>
     </div>
 
-    <div class="account-kpi-card kpi-cyan">
-      <span class="account-kpi-label">📒 Debtor Accounts</span>
-      <span class="account-kpi-val">{{ debtor_accounts|length }}</span>
-      <span class="muted" style="font-size: 0.76rem;">Accounts with category Debtors</span>
+    <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] hover:border-orange-500 dark:hover:border-[#ff6b00] bg-white dark:bg-[#16202c] p-4 shadow-sm transition-all hover:-translate-y-0.5">
+      <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128210; Debtor Accounts</span>
+      <span class="text-2xl font-bold tracking-tight text-sky-600 dark:text-sky-400">{{ debtor_accounts|length }}</span>
+      <span class="text-xs text-slate-500 dark:text-slate-400">Accounts with category Debtors</span>
     </div>
   </section>
 
   <!-- TAB 1: CREDIT REGISTRATION -->
   {% if current_tab == 'credits' %}
-    <section class="debt-card">
-      <div class="between" style="margin-bottom: 1rem;">
+    <section class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div>
-          <h2 id="credit-form-title" style="margin: 0;">Credit Registration Form</h2>
-          <p class="muted" style="margin: 0.2rem 0 0; font-size: 0.85rem;">
+          <h2 id="credit-form-title" class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Credit Registration Form</h2>
+          <p class="mt-0.5 mb-0 text-sm text-slate-600 dark:text-slate-400">
             Link to an existing <strong>Debtors</strong> account or type a debtor name to check if it exists and register it automatically.
           </p>
         </div>
-        <button type="button" id="credit-cancel-edit-btn" class="btn-secondary-pill hidden" onclick="resetCreditForm()">
+        <button
+          type="button"
+          id="credit-cancel-edit-btn"
+          onclick="resetCreditForm()"
+          class="hidden rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+        >
           Cancel Edit
         </button>
       </div>
 
-      <form method="post" action="{% url 'debts_add' %}" id="credit-registration-form" class="debt-form-grid">
+      <form method="post" action="{% url 'debts_add' %}" id="credit-registration-form" class="m-0 flex flex-col gap-3">
         {% csrf_token %}
         <input type="hidden" name="id" id="credit-id" value="">
 
-        <div class="debt-grid-2">
-          <div class="form-group">
-            <label class="form-label" for="credit-account-select">Existing Debtor Account (Category: Debtors)</label>
-            <select name="account" id="credit-account-select" class="form-select">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-account-select">Existing Debtor Account (Category: Debtors)</label>
+            <select name="account" id="credit-account-select" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
               <option value="">-- Select existing debtor or type new below --</option>
               {% for da in debtor_accounts %}
                 <option value="{{ da.id }}">{{ da.name }}{% if da.account_number %} ({{ da.account_number }}){% endif %}</option>
@@ -101,13 +122,13 @@
             </select>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="credit-debtor-name">Or Check / Register Debtor Account Name</label>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-debtor-name">Or Check / Register Debtor Account Name</label>
             <input
               type="text"
               name="debtor_account_name"
               id="credit-debtor-name"
-              class="form-input"
+              class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500"
               list="debtor-accounts-datalist"
               placeholder="e.g. KCB Loan, M-Shwari, John Doe"
             >
@@ -116,201 +137,222 @@
                 <option value="{{ da.name }}">
               {% endfor %}
             </datalist>
-            <div id="debtor-check-status" class="form-hint"></div>
+            <div id="debtor-check-status" class="text-xs text-slate-400 dark:text-slate-500"></div>
           </div>
         </div>
 
-        <div class="debt-grid-3">
-          <div class="form-group">
-            <label class="form-label" for="credit-reg-date">Registration Date *</label>
-            <input type="date" name="registration_date" id="credit-reg-date" class="form-input" value="{{ today_iso }}" required>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-reg-date">Registration Date *</label>
+            <input type="date" name="registration_date" id="credit-reg-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="credit-principal">Amount Borrowed *</label>
-            <input type="number" name="principal" id="credit-principal" class="form-input" step="0.01" min="0.01" placeholder="0.00" required>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-principal">Amount Borrowed *</label>
+            <input type="number" name="principal" id="credit-principal" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="credit-service-date">Service Date (Due Date)</label>
-            <input type="date" name="service_date" id="credit-service-date" class="form-input">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-service-date">Service Date (Due Date)</label>
+            <input type="date" name="service_date" id="credit-service-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
           </div>
         </div>
 
-        <div class="debt-grid-3">
-          <div class="form-group">
-            <label class="form-label" for="credit-name">Credit / Loan Reference (optional)</label>
-            <input type="text" name="name" id="credit-name" class="form-input" placeholder="Defaults to Debtor Account name">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-name">Credit / Loan Reference (optional)</label>
+            <input type="text" name="name" id="credit-name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Defaults to Debtor Account name">
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="credit-debtor-number">Debtor Acc / Phone # (if new)</label>
-            <input type="text" name="debtor_account_number" id="credit-debtor-number" class="form-input" placeholder="Optional">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-debtor-number">Debtor Acc / Phone # (if new)</label>
+            <input type="text" name="debtor_account_number" id="credit-debtor-number" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
           </div>
 
-          <div class="form-group">
-            <label class="form-label" for="credit-min-payment">Min Payment / Interest %</label>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
-              <input type="number" name="min_payment" id="credit-min-payment" class="form-input" step="0.01" min="0" placeholder="Min pay">
-              <input type="number" name="interest_rate" id="credit-interest-rate" class="form-input" step="0.01" min="0" placeholder="Rate %">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-min-payment">Min Payment / Interest %</label>
+            <div class="grid grid-cols-2 gap-2">
+              <input type="number" name="min_payment" id="credit-min-payment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Min pay">
+              <input type="number" name="interest_rate" id="credit-interest-rate" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0" placeholder="Rate %">
             </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="credit-budget-category">Budget Category (Optional — for Budget Plan)</label>
-          <select name="budget_category" id="credit-budget-category" class="form-select">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-budget-category">Budget Category (Optional — for Budget Plan)</label>
+          <select name="budget_category" id="credit-budget-category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="">-- Not linked to a Budget Category --</option>
             {% for bc in budget_categories %}
               <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
             {% endfor %}
           </select>
-          <span class="form-hint">Link repayments for this credit to a Budget Category so you can allocate &amp; track them in your Budget Plan.</span>
+          <span class="text-xs text-slate-400 dark:text-slate-500">Link repayments for this credit to a Budget Category so you can allocate &amp; track them in your Budget Plan.</span>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="credit-comment">Comment</label>
-          <textarea name="comment" id="credit-comment" class="form-textarea" rows="2" placeholder="Loan purpose, terms, or notes..."></textarea>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="credit-comment">Comment</label>
+          <textarea name="comment" id="credit-comment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" rows="2" placeholder="Loan purpose, terms, or notes..."></textarea>
         </div>
 
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-          <button type="submit" id="credit-submit-btn" class="btn-orange-pill">Register Credit</button>
+        <div class="flex justify-end gap-3 pt-1">
+          <button
+            type="submit"
+            id="credit-submit-btn"
+            class="inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
+          >Register Credit</button>
         </div>
       </form>
     </section>
 
-    <h2 style="margin-top: 2rem;">Registered Credits</h2>
-    {% if not debts %}
-      <div class="empty-state">
-        <h3>No credits registered yet</h3>
-        <p class="muted">Use the Credit Registration Form above to register a loan or credit.</p>
-      </div>
-    {% else %}
-      {% if not payable_accounts %}
-        <p class="muted">Ensure a payment account in <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts</a> has an available balance so repayments can be recorded.</p>
-      {% endif %}
+    <div class="space-y-3">
+      <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Registered Credits</h2>
+      {% if not debts %}
+        <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+          <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No credits registered yet</h3>
+          <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Use the Credit Registration Form above to register a loan or credit.</p>
+        </div>
+      {% else %}
+        {% if not payable_accounts %}
+          <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
+            Ensure a payment account in <a href="{% url 'accounts' %}" class="font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline">Accounts</a> has an available balance so repayments can be recorded.
+          </p>
+        {% endif %}
 
-      <div class="debt-list">
-        {% for d in debts %}
-          <div class="debt-item-card {% if d.is_overdue %}is-overdue{% endif %}">
-            <div class="between" style="flex-wrap: wrap; gap: 0.75rem;">
-              <div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                  <strong style="font-size: 1.05rem;">{{ d.name }}</strong>
-                  {% if d.account %}
-                    <span class="badge badge-type-budget">🧾 {{ d.account.name }}</span>
-                  {% endif %}
-                  {% if d.budget_category %}
-                    <span class="badge badge-savings">📊 Budget: {{ d.budget_category.name }}</span>
-                  {% endif %}
-                  {% if d.balance <= 0 %}
-                    <span class="badge badge-active">Settled</span>
-                  {% elif d.is_overdue %}
-                    <span class="badge badge-low-balance">⚠️ Past Service Date</span>
+        <div class="flex flex-col gap-3">
+          {% for d in debts %}
+            <div class="rounded-[14px] border bg-white dark:bg-[#16202c] p-4 shadow-sm {% if d.is_overdue %}border-red-500/45{% else %}border-slate-200 dark:border-[#233144]{% endif %}">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <strong class="text-base font-bold text-slate-900 dark:text-slate-50">{{ d.name }}</strong>
+                    {% if d.account %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">&#129534; {{ d.account.name }}</span>
+                    {% endif %}
+                    {% if d.budget_category %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">&#128202; Budget: {{ d.budget_category.name }}</span>
+                    {% endif %}
+                    {% if d.balance <= 0 %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35">Settled</span>
+                    {% elif d.is_overdue %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/35 animate-pulse">&#9888;&#65039; Past Service Date</span>
+                    {% endif %}
+                  </div>
+                  <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Registered: <strong class="text-slate-700 dark:text-slate-200">{{ d.registration_date|date:"Y-m-d" }}</strong>
+                    &bull; Service Date: <strong class="text-slate-700 dark:text-slate-200">{% if d.service_date %}{{ d.service_date|date:"Y-m-d" }}{% else %}&mdash;{% endif %}</strong>
+                    {% if d.min_payment > 0 %}&bull; Min Payment: {{ d.min_payment|money }}{% endif %}
+                    {% if d.interest_rate > 0 %}&bull; Rate: {{ d.interest_rate }}%{% endif %}
+                  </div>
+                  {% if d.comment %}
+                    <p class="mt-1 mb-0 text-sm text-slate-600 dark:text-slate-400">{{ d.comment }}</p>
                   {% endif %}
                 </div>
-                <div class="muted" style="font-size: 0.82rem; margin-top: 0.25rem;">
-                  Registered: <strong>{{ d.registration_date|date:"Y-m-d" }}</strong>
-                  &bull; Service Date: <strong>{% if d.service_date %}{{ d.service_date|date:"Y-m-d" }}{% else %}—{% endif %}</strong>
-                  {% if d.min_payment > 0 %}&bull; Min Payment: {{ d.min_payment|money }}{% endif %}
-                  {% if d.interest_rate > 0 %}&bull; Rate: {{ d.interest_rate }}%{% endif %}
+
+                <div class="text-right">
+                  <div class="text-base font-bold text-slate-900 dark:text-slate-50">
+                    {{ d.balance|money }}
+                    <span class="text-sm font-normal text-slate-500 dark:text-slate-400">left</span>
+                  </div>
+                  <div class="text-xs text-slate-500 dark:text-slate-400">
+                    Borrowed {{ d.principal|money }} &bull; Paid {{ d.paid_amount|money }} ({{ d.paid_pct }}%)
+                  </div>
                 </div>
-                {% if d.comment %}
-                  <p class="muted" style="margin: 0.35rem 0 0; font-size: 0.85rem;">{{ d.comment }}</p>
+              </div>
+
+              <div class="my-2.5 h-2 w-full overflow-hidden rounded border border-slate-200 dark:border-[#233144] bg-slate-100 dark:bg-[#0f1622]">
+                <div class="h-full bg-[#ea580c] dark:bg-[#ff6b00]" style="width: {{ d.paid_pct }}%;"></div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2.5">
+                {% if payable_accounts and d.balance > 0 %}
+                  <form method="post" action="{% url 'debts_repay' d.id %}" class="debt-repay-inline-form m-0 flex-1 flex flex-wrap items-center gap-2" data-debt-remaining="{{ d.remaining_str }}">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'debts' %}">
+                    <select name="account" required class="flex-1 min-w-[190px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+                      {% for a in payable_accounts %}
+                        <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
+                          Pay from {{ a.name }} ({{ a.balance|money }})
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <input type="date" name="transaction_date" value="{{ today_iso }}" required class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+                    <input
+                      name="amount"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max="{{ d.remaining_str }}"
+                      placeholder="Repayment amount (max {{ d.remaining_str }})"
+                      required
+                      class="flex-1 min-w-[160px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
+                    >
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-4 py-2 text-xs font-semibold text-white cursor-pointer transition-colors"
+                    >Record Payment</button>
+                  </form>
+                {% elif d.balance <= 0 %}
+                  <span class="text-sm text-slate-500 dark:text-slate-400">&#9989; Account settled &mdash; no remaining balance</span>
+                {% else %}
+                  <span class="text-sm text-slate-500 dark:text-slate-400">&#9888;&#65039; No account with available balance to pay from</span>
                 {% endif %}
-              </div>
 
-              <div style="text-align: right;">
-                <div style="font-size: 1.05rem; font-weight: 700;">{{ d.balance|money }} <span class="muted" style="font-weight: 400; font-size: 0.85rem;">left</span></div>
-                <div class="muted" style="font-size: 0.8rem;">
-                  Borrowed {{ d.principal|money }} &bull; Paid {{ d.paid_amount|money }} ({{ d.paid_pct }}%)
+                <div class="flex flex-wrap items-center gap-1.5">
+                  <a
+                    href="{% url 'debts_payments' %}?debt={{ d.id }}"
+                    class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+                  >
+                    Payments
+                  </a>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] hover:text-slate-900 dark:hover:text-slate-50 transition-colors"
+                    data-id="{{ d.id }}"
+                    data-name="{{ d.name|escapejs }}"
+                    data-account="{{ d.account_id|default:'' }}"
+                    data-reg-date="{{ d.registration_date|date:'Y-m-d' }}"
+                    data-service-date="{{ d.service_date|date:'Y-m-d'|default:'' }}"
+                    data-principal="{{ d.principal }}"
+                    data-min-payment="{{ d.min_payment }}"
+                    data-interest-rate="{{ d.interest_rate }}"
+                    data-budget-category="{{ d.budget_category_id|default:'' }}"
+                    data-comment="{{ d.comment|escapejs }}"
+                    onclick="editCredit(this)"
+                  >Edit</button>
+                  <form method="post" action="{% url 'debts_delete' d.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Delete this credit and unlink its repayments?');">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors"
+                    >Delete</button>
+                  </form>
                 </div>
               </div>
             </div>
-
-            <div class="track" style="margin: 0.75rem 0;">
-              <i style="width: {{ d.paid_pct }}%;"></i>
-            </div>
-
-            <div class="between" style="flex-wrap: wrap; gap: 0.65rem; align-items: center;">
-              {% if payable_accounts and d.balance > 0 %}
-                <form method="post" action="{% url 'debts_repay' d.id %}" class="row debt-repay-inline-form" data-debt-remaining="{{ d.remaining_str }}" style="flex: 1; margin: 0;">
-                  {% csrf_token %}
-                  <input type="hidden" name="next" value="{% url 'debts' %}">
-                  <select name="account" required>
-                    {% for a in payable_accounts %}
-                      <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
-                        Pay from {{ a.name }} ({{ a.balance|money }})
-                      </option>
-                    {% endfor %}
-                  </select>
-                  <input type="date" name="transaction_date" value="{{ today_iso }}" required>
-                  <input
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="{{ d.remaining_str }}"
-                    placeholder="Repayment amount (max {{ d.remaining_str }})"
-                    required
-                  >
-                  <button type="submit" class="btn-orange-pill" style="padding: 0.45rem 1rem; font-size: 0.84rem;">Record Payment</button>
-                </form>
-              {% elif d.balance <= 0 %}
-                <span class="muted" style="font-size: 0.84rem;">✅ Account settled — no remaining balance</span>
-              {% else %}
-                <span class="muted" style="font-size: 0.84rem;">⚠️ No account with available balance to pay from</span>
-              {% endif %}
-
-              <div class="row-actions">
-                <a href="{% url 'debts_payments' %}?debt={{ d.id }}" class="btn-action-pill" style="text-decoration: none;">
-                  Payments
-                </a>
-                <button
-                  type="button"
-                  class="btn-action-pill"
-                  data-id="{{ d.id }}"
-                  data-name="{{ d.name|escapejs }}"
-                  data-account="{{ d.account_id|default:'' }}"
-                  data-reg-date="{{ d.registration_date|date:'Y-m-d' }}"
-                  data-service-date="{{ d.service_date|date:'Y-m-d'|default:'' }}"
-                  data-principal="{{ d.principal }}"
-                  data-min-payment="{{ d.min_payment }}"
-                  data-interest-rate="{{ d.interest_rate }}"
-                  data-budget-category="{{ d.budget_category_id|default:'' }}"
-                  data-comment="{{ d.comment|escapejs }}"
-                  onclick="editCredit(this)"
-                >Edit</button>
-                <form method="post" action="{% url 'debts_delete' d.id %}" style="margin: 0;" onsubmit="return confirm('Delete this credit and unlink its repayments?');">
-                  {% csrf_token %}
-                  <button type="submit" class="btn-danger-pill">Delete</button>
-                </form>
-              </div>
-            </div>
-          </div>
-        {% endfor %}
-      </div>
-    {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
 
   <!-- TAB 2: PAYMENTS & REPAYMENT TRANSACTIONS -->
   {% elif current_tab == 'payments' %}
-    <section class="debt-card">
-      <h2 style="margin-top: 0;">Record Repayment Transaction</h2>
+    <section class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm">
+      <h2 class="m-0 mb-3 text-lg font-bold text-slate-900 dark:text-slate-50">Record Repayment Transaction</h2>
       {% if not debts %}
-        <p class="muted">No credits registered yet. <a href="{% url 'debts' %}" style="color: var(--accent-orange);">Register a credit first</a>.</p>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">No credits registered yet. <a href="{% url 'debts' %}" class="font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline">Register a credit first</a>.</p>
       {% elif not payable_accounts %}
-        <p class="muted">No accounts with available balance. <a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Add funds to an account</a> first.</p>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">No accounts with available balance. <a href="{% url 'accounts' %}" class="font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline">Add funds to an account</a> first.</p>
       {% elif not unpaid_debts %}
-        <p class="muted">All registered credits are settled. No remaining balance to repay.</p>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">All registered credits are settled. No remaining balance to repay.</p>
       {% else %}
-        <form method="post" action="{% url 'debts_repay_form' %}" id="repayment-form" class="debt-form-grid">
+        <form method="post" action="{% url 'debts_repay_form' %}" id="repayment-form" class="m-0 flex flex-col gap-3">
           {% csrf_token %}
           <input type="hidden" name="next" value="{% url 'debts_payments' %}">
 
-          <div class="debt-grid-3">
-            <div class="form-group">
-              <label class="form-label" for="pay-debt">Credit / Debtor *</label>
-              <select name="debt" id="pay-debt" class="form-select" required>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-debt">Credit / Debtor *</label>
+              <select name="debt" id="pay-debt" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
                 <option value="">-- Select credit --</option>
                 {% for d in unpaid_debts %}
                   <option
@@ -319,15 +361,15 @@
                     data-budget-category="{{ d.budget_category_id|default:'' }}"
                     {% if preselect_debt_id == d.id %}selected{% endif %}
                   >
-                    {% if d.account %}{{ d.account.name }} — {% endif %}{{ d.name }} (Left: {{ d.balance|money }})
+                    {% if d.account %}{{ d.account.name }} &mdash; {% endif %}{{ d.name }} (Left: {{ d.balance|money }})
                   </option>
                 {% endfor %}
               </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="pay-account">Pay From Account *</label>
-              <select name="account" id="pay-account" class="form-select" required>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-account">Pay From Account *</label>
+              <select name="account" id="pay-account" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" required>
                 {% for a in payable_accounts %}
                   <option value="{{ a.id }}" data-balance="{{ a.balance_str }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
                     {{ a.name }} ({{ a.balance|money }})
@@ -336,22 +378,22 @@
               </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="pay-amount">Repayment Amount *</label>
-              <input type="number" name="amount" id="pay-amount" class="form-input" step="0.01" min="0.01" placeholder="0.00" required>
-              <div id="pay-amount-hint" class="form-hint"></div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-amount">Repayment Amount *</label>
+              <input type="number" name="amount" id="pay-amount" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" step="0.01" min="0.01" placeholder="0.00" required>
+              <div id="pay-amount-hint" class="text-xs text-slate-400 dark:text-slate-500"></div>
             </div>
           </div>
 
-          <div class="debt-grid-3">
-            <div class="form-group">
-              <label class="form-label" for="pay-date">Payment Date *</label>
-              <input type="date" name="transaction_date" id="pay-date" class="form-input" value="{{ today_iso }}" required>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-date">Payment Date *</label>
+              <input type="date" name="transaction_date" id="pay-date" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" value="{{ today_iso }}" required>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="pay-budget-category">Budget Category (Optional)</label>
-              <select name="budget_category" id="pay-budget-category" class="form-select">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-budget-category">Budget Category (Optional)</label>
+              <select name="budget_category" id="pay-budget-category" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
                 <option value="">-- Not linked to Budget Plan --</option>
                 {% for bc in budget_categories %}
                   <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
@@ -359,151 +401,168 @@
               </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="pay-comment">Comment / Reference</label>
-              <input type="text" name="comment" id="pay-comment" class="form-input" placeholder="e.g. M-Pesa ref, partial installment">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs font-medium text-slate-600 dark:text-slate-400" for="pay-comment">Comment / Reference</label>
+              <input type="text" name="comment" id="pay-comment" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-2 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. M-Pesa ref, partial installment">
             </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end;">
-            <button type="submit" class="btn-orange-pill">Save Repayment</button>
+          <div class="flex justify-end pt-1">
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors"
+            >Save Repayment</button>
           </div>
         </form>
       {% endif %}
     </section>
 
-    <div class="between" style="margin: 2rem 0 0.85rem; flex-wrap: wrap; gap: 0.75rem;">
-      <h2 style="margin: 0;">Repayment Transactions</h2>
-      <div class="stat-pill">
-        <span>Active Total Shown:</span>
-        <strong class="highlight">{{ repayments_total_active|money }}</strong>
+    <div class="space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Repayment Transactions</h2>
+        <div class="inline-flex items-center gap-2 rounded-full border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-3.5 py-1.5 text-xs shadow-sm">
+          <span class="text-slate-600 dark:text-slate-400">Active Total Shown:</span>
+          <strong class="font-bold text-orange-600 dark:text-[#ff6b00]">{{ repayments_total_active|money }}</strong>
+        </div>
       </div>
-    </div>
 
-    <form method="get" action="{% url 'debts_payments' %}" class="row" style="margin-bottom: 1rem;">
-      <select name="debtor">
-        <option value="">All Debtors</option>
-        {% for da in debtor_accounts %}
-          <option value="{{ da.id }}" {% if filter_debtor_id == da.id %}selected{% endif %}>{{ da.name }}</option>
-        {% endfor %}
-      </select>
-      <select name="debt">
-        <option value="">All Credits</option>
-        {% for d in debts %}
-          <option value="{{ d.id }}" {% if filter_debt_id == d.id %}selected{% endif %}>{{ d.name }}</option>
-        {% endfor %}
-      </select>
-      <select name="year">
-        <option value="">All Years</option>
-        {% for yr in analysis.available_years %}
-          <option value="{{ yr }}" {% if filter_year == yr %}selected{% endif %}>{{ yr }}</option>
-        {% endfor %}
-      </select>
-      <label class="form-checkbox-row" style="margin: 0;">
-        <input type="checkbox" name="show_voided" value="1" {% if show_voided %}checked{% endif %}>
-        <span>Show voided</span>
-      </label>
-      <button type="submit" class="btn-secondary-pill">Filter</button>
-      {% if filter_debt_id or filter_debtor_id or filter_year or show_voided %}
-        <a href="{% url 'debts_payments' %}" class="btn-secondary-pill" style="text-decoration: none;">Reset</a>
-      {% endif %}
-    </form>
+      <form method="get" action="{% url 'debts_payments' %}" class="m-0 flex flex-wrap items-center gap-2">
+        <select name="debtor" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <option value="">All Debtors</option>
+          {% for da in debtor_accounts %}
+            <option value="{{ da.id }}" {% if filter_debtor_id == da.id %}selected{% endif %}>{{ da.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="debt" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <option value="">All Credits</option>
+          {% for d in debts %}
+            <option value="{{ d.id }}" {% if filter_debt_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="year" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
+          <option value="">All Years</option>
+          {% for yr in analysis.available_years %}
+            <option value="{{ yr }}" {% if filter_year == yr %}selected{% endif %}>{{ yr }}</option>
+          {% endfor %}
+        </select>
+        <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300 px-1">
+          <input type="checkbox" name="show_voided" value="1" class="w-4 h-4 accent-[#ff6b00]" {% if show_voided %}checked{% endif %}>
+          <span>Show voided</span>
+        </label>
+        <button
+          type="submit"
+          class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+        >Filter</button>
+        {% if filter_debt_id or filter_debtor_id or filter_year or show_voided %}
+          <a
+            href="{% url 'debts_payments' %}"
+            class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-3.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 no-underline hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+          >Reset</a>
+        {% endif %}
+      </form>
 
-    {% if not repayments %}
-      <div class="empty-state">
-        <h3>No repayment transactions found</h3>
-        <p class="muted">Record a repayment above to track debt paydown history.</p>
-      </div>
-    {% else %}
-      <div class="debt-table-wrap">
-        <table class="debt-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Debtor</th>
-              <th>Credit</th>
-              <th>Paid From</th>
-              <th>Budget Category</th>
-              <th class="num">Amount</th>
-              <th>Comment</th>
-              <th>Status</th>
-              <th class="num">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for tx in repayments %}
-              <tr class="{% if not tx.is_active %}row-voided{% endif %}">
-                <td>{{ tx.transaction_date|date:"Y-m-d" }}</td>
-                <td>
-                  {% if tx.debt and tx.debt.account %}
-                    <span class="badge badge-type-budget">{{ tx.debt.account.name }}</span>
-                  {% elif tx.debt %}
-                    {{ tx.debt.name }}
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td>{% if tx.debt %}{{ tx.debt.name }}{% else %}—{% endif %}</td>
-                <td>{% if tx.account %}{{ tx.account.name }}{% else %}—{% endif %}</td>
-                <td>
-                  {% if tx.budget_category %}
-                    <span class="badge badge-savings">{{ tx.budget_category.name }}</span>
-                  {% elif tx.debt and tx.debt.budget_category %}
-                    <span class="badge badge-savings">{{ tx.debt.budget_category.name }}</span>
-                  {% else %}
-                    <span class="muted">—</span>
-                  {% endif %}
-                </td>
-                <td class="num"><strong>{{ tx.amount|money }}</strong></td>
-                <td>{{ tx.description|default:"—" }}</td>
-                <td>
-                  <span class="badge {% if tx.is_active %}badge-active{% else %}badge-inactive{% endif %}">
-                    {% if tx.is_active %}Active{% else %}Voided{% endif %}
-                  </span>
-                </td>
-                <td class="num">
-                  <div class="row-actions" style="justify-content: flex-end;">
-                    <form method="post" action="{% url 'transactions_toggle' tx.id %}" style="margin: 0;">
-                      {% csrf_token %}
-                      <input type="hidden" name="next" value="{% url 'debts_payments' %}">
-                      <button type="submit" class="btn-action-pill">
-                        {% if tx.is_active %}Void{% else %}Restore{% endif %}
-                      </button>
-                    </form>
-                    <form method="post" action="{% url 'transactions_delete' tx.id %}" style="margin: 0;" onsubmit="return confirm('Delete this repayment transaction?');">
-                      {% csrf_token %}
-                      <input type="hidden" name="next" value="{% url 'debts_payments' %}">
-                      <button type="submit" class="btn-danger-pill">Delete</button>
-                    </form>
-                  </div>
-                </td>
+      {% if not repayments %}
+        <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+          <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No repayment transactions found</h3>
+          <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Record a repayment above to track debt paydown history.</p>
+        </div>
+      {% else %}
+        <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
+          <table class="w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Date</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Debtor</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Credit</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Paid From</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Budget Category</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">Amount</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Comment</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Status</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3 py-2.5 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Actions</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    {% endif %}
+            </thead>
+            <tbody>
+              {% for tx in repayments %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.02] {% if not tx.is_active %}opacity-55{% endif %}">
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-slate-700 dark:text-slate-200 whitespace-nowrap">{{ tx.transaction_date|date:"Y-m-d" }}</td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] whitespace-nowrap">
+                    {% if tx.debt and tx.debt.account %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">{{ tx.debt.account.name }}</span>
+                    {% elif tx.debt %}
+                      {{ tx.debt.name }}
+                    {% else %}
+                      &mdash;
+                    {% endif %}
+                  </td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-slate-700 dark:text-slate-200 whitespace-nowrap">{% if tx.debt %}{{ tx.debt.name }}{% else %}&mdash;{% endif %}</td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-slate-700 dark:text-slate-200 whitespace-nowrap">{% if tx.account %}{{ tx.account.name }}{% else %}&mdash;{% endif %}</td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] whitespace-nowrap">
+                    {% if tx.budget_category %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">{{ tx.budget_category.name }}</span>
+                    {% elif tx.debt and tx.debt.budget_category %}
+                      <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35">{{ tx.debt.budget_category.name }}</span>
+                    {% else %}
+                      <span class="text-slate-400 dark:text-slate-500">&mdash;</span>
+                    {% endif %}
+                  </td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-right tabular-nums font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ tx.amount|money }}</td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-slate-600 dark:text-slate-400 whitespace-nowrap">{{ tx.description|default:"—" }}</td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] whitespace-nowrap">
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border {% if tx.is_active %}bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/35{% else %}bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30{% endif %}">
+                      {% if tx.is_active %}Active{% else %}Voided{% endif %}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 border-b border-slate-100 dark:border-white/[0.06] text-right whitespace-nowrap">
+                    <div class="flex items-center justify-end gap-1.5">
+                      <form method="post" action="{% url 'transactions_toggle' tx.id %}" class="m-0 inline-flex items-center">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'debts_payments' %}">
+                        <button
+                          type="submit"
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736] transition-colors"
+                        >
+                          {% if tx.is_active %}Void{% else %}Restore{% endif %}
+                        </button>
+                      </form>
+                      <form method="post" action="{% url 'transactions_delete' tx.id %}" class="m-0 inline-flex items-center" onsubmit="return confirm('Delete this repayment transaction?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{% url 'debts_payments' %}">
+                        <button
+                          type="submit"
+                          class="inline-flex items-center justify-center whitespace-nowrap leading-none rounded-full border border-red-500/25 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 cursor-pointer transition-colors"
+                        >Delete</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
 
   <!-- TAB 3: DEBT ANALYSIS (DEBTORS VS MONTHS) -->
   {% else %}
-    <section class="debt-card" style="margin-bottom: 1.5rem;">
-      <div class="between" style="flex-wrap: wrap; gap: 1rem;">
+    <section class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-4 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 style="margin: 0;">Debt Analysis ({{ analysis.selected_year }})</h2>
-          <p class="muted" style="margin: 0.25rem 0 0; font-size: 0.85rem;">
+          <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Debt Analysis ({{ analysis.selected_year }})</h2>
+          <p class="mt-0.5 mb-0 text-sm text-slate-600 dark:text-slate-400">
             Monthly breakdown of loans taken and repayments made per debtor for {{ analysis.selected_year }}.
           </p>
         </div>
 
-        <form method="get" action="{% url 'debts_analysis' %}" class="row" style="margin: 0;">
-          <label class="form-label" for="analysis-year" style="margin: 0;">Year:</label>
-          <select name="year" id="analysis-year" onchange="this.form.submit()">
+        <form method="get" action="{% url 'debts_analysis' %}" class="m-0 flex flex-wrap items-center gap-2">
+          <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="analysis-year">Year:</label>
+          <select name="year" id="analysis-year" onchange="this.form.submit()" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             {% for yr in analysis.available_years %}
               <option value="{{ yr }}" {% if yr == analysis.selected_year %}selected{% endif %}>{{ yr }}</option>
             {% endfor %}
           </select>
 
-          <select name="metric" onchange="this.form.submit()">
+          <select name="metric" onchange="this.form.submit()" class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3 py-1.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
             <option value="both" {% if analysis_metric == 'both' %}selected{% endif %}>Loans Taken &amp; Payments</option>
             <option value="taken" {% if analysis_metric == 'taken' %}selected{% endif %}>Loans Taken Only</option>
             <option value="paid" {% if analysis_metric == 'paid' %}selected{% endif %}>Payments Only</option>
@@ -511,113 +570,113 @@
         </form>
       </div>
 
-      <div class="account-kpi-grid" style="margin: 1.25rem 0 0;">
-        <div class="account-kpi-card kpi-warn">
-          <span class="account-kpi-label">📥 Loans Taken ({{ analysis.selected_year }})</span>
-          <span class="account-kpi-val">{{ analysis.grand_year_taken|money }}</span>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="flex flex-col gap-1 rounded-[14px] border border-red-500/40 bg-slate-50 dark:bg-[#0f1622] p-3.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128229; Loans Taken ({{ analysis.selected_year }})</span>
+          <span class="text-2xl font-bold text-red-600 dark:text-red-400">{{ analysis.grand_year_taken|money }}</span>
         </div>
-        <div class="account-kpi-card kpi-green">
-          <span class="account-kpi-label">💸 Payments ({{ analysis.selected_year }})</span>
-          <span class="account-kpi-val">{{ analysis.grand_year_paid|money }}</span>
+        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128184; Payments ({{ analysis.selected_year }})</span>
+          <span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ analysis.grand_year_paid|money }}</span>
         </div>
-        <div class="account-kpi-card kpi-cyan">
-          <span class="account-kpi-label">📊 Net Change ({{ analysis.selected_year }})</span>
-          <span class="account-kpi-val">{{ analysis.grand_net_change|money }}</span>
+        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#128202; Net Change ({{ analysis.selected_year }})</span>
+          <span class="text-2xl font-bold text-sky-600 dark:text-sky-400">{{ analysis.grand_net_change|money }}</span>
         </div>
-        <div class="account-kpi-card kpi-accent">
-          <span class="account-kpi-label">⚖️ All-Time Balance</span>
-          <span class="account-kpi-val">{{ analysis.grand_balance|money }}</span>
+        <div class="flex flex-col gap-1 rounded-[14px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#0f1622] p-3.5">
+          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">&#9878;&#65039; All-Time Balance</span>
+          <span class="text-2xl font-bold text-orange-600 dark:text-[#ff6b00]">{{ analysis.grand_balance|money }}</span>
         </div>
       </div>
     </section>
 
     {% if not analysis.rows %}
-      <div class="empty-state">
-        <h3>No debtors or credits to analyze yet</h3>
-        <p class="muted">Register a debtor account and credit first to see the monthly matrix.</p>
+      <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-8 text-center">
+        <h3 class="m-0 mb-2 text-lg font-bold text-slate-900 dark:text-slate-50">No debtors or credits to analyze yet</h3>
+        <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Register a debtor account and credit first to see the monthly matrix.</p>
       </div>
     {% else %}
-      <div class="debt-table-wrap">
-        <table class="debt-table debt-analysis-table">
+      <div class="rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] overflow-x-auto shadow-sm">
+        <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="sticky-col">Debtor</th>
+              <th class="sticky left-0 z-[3] bg-slate-50 dark:bg-[#1a2433] px-3.5 py-3 border-b border-r border-slate-200 dark:border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap">Debtor</th>
               {% for m in analysis.months %}
-                <th class="num" title="{{ m.full }}">{{ m.short }}</th>
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums" title="{{ m.full }}">{{ m.short }}</th>
               {% endfor %}
-              <th class="num">{{ analysis.selected_year }} Total</th>
-              <th class="num">Balance</th>
+              <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">{{ analysis.selected_year }} Total</th>
+              <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-b border-slate-200 dark:border-white/[0.06] text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 whitespace-nowrap tabular-nums">Balance</th>
             </tr>
           </thead>
           <tbody>
             {% for r in analysis.rows %}
-              <tr>
-                <td class="sticky-col"><strong>{{ r.label }}</strong></td>
+              <tr class="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
+                <td class="sticky left-0 z-[2] bg-white dark:bg-[#16202c] px-3.5 py-2.5 border-b border-r border-slate-100 dark:border-white/[0.06] font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ r.label }}</td>
                 {% for cell in r.months %}
-                  <td class="num">
+                  <td class="px-3.5 py-2.5 border-b border-slate-100 dark:border-white/[0.06] text-right tabular-nums whitespace-nowrap">
                     {% if analysis_metric == 'taken' %}
                       {% if cell.taken > 0 %}
-                        <span class="amt-taken">{{ cell.taken|money }}</span>
+                        <span class="text-xs font-medium text-orange-600 dark:text-[#ff6b00]">{{ cell.taken|money }}</span>
                       {% else %}
-                        <span class="muted">—</span>
+                        <span class="text-slate-400 dark:text-slate-500">&mdash;</span>
                       {% endif %}
                     {% elif analysis_metric == 'paid' %}
                       {% if cell.paid > 0 %}
-                        <span class="amt-paid">{{ cell.paid|money }}</span>
+                        <span class="text-xs font-medium text-emerald-600 dark:text-emerald-400">{{ cell.paid|money }}</span>
                       {% else %}
-                        <span class="muted">—</span>
+                        <span class="text-slate-400 dark:text-slate-500">&mdash;</span>
                       {% endif %}
                     {% else %}
                       {% if cell.taken > 0 or cell.paid > 0 %}
-                        {% if cell.taken > 0 %}<div class="amt-taken">+{{ cell.taken|money }}</div>{% endif %}
-                        {% if cell.paid > 0 %}<div class="amt-paid">-{{ cell.paid|money }}</div>{% endif %}
+                        {% if cell.taken > 0 %}<div class="text-xs font-medium text-orange-600 dark:text-[#ff6b00]">+{{ cell.taken|money }}</div>{% endif %}
+                        {% if cell.paid > 0 %}<div class="text-xs font-medium text-emerald-600 dark:text-emerald-400">-{{ cell.paid|money }}</div>{% endif %}
                       {% else %}
-                        <span class="muted">—</span>
+                        <span class="text-slate-400 dark:text-slate-500">&mdash;</span>
                       {% endif %}
                     {% endif %}
                   </td>
                 {% endfor %}
-                <td class="num">
+                <td class="px-3.5 py-2.5 border-b border-slate-100 dark:border-white/[0.06] text-right tabular-nums whitespace-nowrap">
                   {% if analysis_metric == 'taken' %}
-                    <strong class="amt-taken">{{ r.year_taken|money }}</strong>
+                    <strong class="text-xs font-bold text-orange-600 dark:text-[#ff6b00]">{{ r.year_taken|money }}</strong>
                   {% elif analysis_metric == 'paid' %}
-                    <strong class="amt-paid">{{ r.year_paid|money }}</strong>
+                    <strong class="text-xs font-bold text-emerald-600 dark:text-emerald-400">{{ r.year_paid|money }}</strong>
                   {% else %}
-                    <div class="amt-taken"><strong>+{{ r.year_taken|money }}</strong></div>
-                    <div class="amt-paid"><strong>-{{ r.year_paid|money }}</strong></div>
+                    <div class="text-xs font-bold text-orange-600 dark:text-[#ff6b00]">+{{ r.year_taken|money }}</div>
+                    <div class="text-xs font-bold text-emerald-600 dark:text-emerald-400">-{{ r.year_paid|money }}</div>
                   {% endif %}
                 </td>
-                <td class="num"><strong>{{ r.balance|money }}</strong></td>
+                <td class="px-3.5 py-2.5 border-b border-slate-100 dark:border-white/[0.06] text-right tabular-nums font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ r.balance|money }}</td>
               </tr>
             {% endfor %}
           </tbody>
           <tfoot>
             <tr>
-              <th class="sticky-col">Total</th>
+              <th class="sticky left-0 z-[3] bg-slate-50 dark:bg-[#1a2433] px-3.5 py-3 border-t-2 border-r border-slate-200 dark:border-[#233144] text-left font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">Total</th>
               {% for mt in analysis.monthly_totals %}
-                <th class="num">
+                <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-t-2 border-slate-200 dark:border-[#233144] text-right tabular-nums font-bold whitespace-nowrap">
                   {% if analysis_metric == 'taken' %}
-                    {% if mt.taken > 0 %}<span class="amt-taken">{{ mt.taken|money }}</span>{% else %}<span class="muted">—</span>{% endif %}
+                    {% if mt.taken > 0 %}<span class="text-xs text-orange-600 dark:text-[#ff6b00]">{{ mt.taken|money }}</span>{% else %}<span class="text-slate-400 dark:text-slate-500">&mdash;</span>{% endif %}
                   {% elif analysis_metric == 'paid' %}
-                    {% if mt.paid > 0 %}<span class="amt-paid">{{ mt.paid|money }}</span>{% else %}<span class="muted">—</span>{% endif %}
+                    {% if mt.paid > 0 %}<span class="text-xs text-emerald-600 dark:text-emerald-400">{{ mt.paid|money }}</span>{% else %}<span class="text-slate-400 dark:text-slate-500">&mdash;</span>{% endif %}
                   {% else %}
-                    {% if mt.taken > 0 %}<div class="amt-taken">+{{ mt.taken|money }}</div>{% endif %}
-                    {% if mt.paid > 0 %}<div class="amt-paid">-{{ mt.paid|money }}</div>{% endif %}
-                    {% if mt.taken == 0 and mt.paid == 0 %}<span class="muted">—</span>{% endif %}
+                    {% if mt.taken > 0 %}<div class="text-xs text-orange-600 dark:text-[#ff6b00]">+{{ mt.taken|money }}</div>{% endif %}
+                    {% if mt.paid > 0 %}<div class="text-xs text-emerald-600 dark:text-emerald-400">-{{ mt.paid|money }}</div>{% endif %}
+                    {% if mt.taken == 0 and mt.paid == 0 %}<span class="text-slate-400 dark:text-slate-500">&mdash;</span>{% endif %}
                   {% endif %}
                 </th>
               {% endfor %}
-              <th class="num">
+              <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-t-2 border-slate-200 dark:border-[#233144] text-right tabular-nums font-bold whitespace-nowrap">
                 {% if analysis_metric == 'taken' %}
-                  <span class="amt-taken">{{ analysis.grand_year_taken|money }}</span>
+                  <span class="text-xs text-orange-600 dark:text-[#ff6b00]">{{ analysis.grand_year_taken|money }}</span>
                 {% elif analysis_metric == 'paid' %}
-                  <span class="amt-paid">{{ analysis.grand_year_paid|money }}</span>
+                  <span class="text-xs text-emerald-600 dark:text-emerald-400">{{ analysis.grand_year_paid|money }}</span>
                 {% else %}
-                  <div class="amt-taken">+{{ analysis.grand_year_taken|money }}</div>
-                  <div class="amt-paid">-{{ analysis.grand_year_paid|money }}</div>
+                  <div class="text-xs text-orange-600 dark:text-[#ff6b00]">+{{ analysis.grand_year_taken|money }}</div>
+                  <div class="text-xs text-emerald-600 dark:text-emerald-400">-{{ analysis.grand_year_paid|money }}</div>
                 {% endif %}
               </th>
-              <th class="num">{{ analysis.grand_balance|money }}</th>
+              <th class="bg-slate-50 dark:bg-white/[0.03] px-3.5 py-3 border-t-2 border-slate-200 dark:border-[#233144] text-right tabular-nums font-bold text-slate-900 dark:text-slate-50 whitespace-nowrap">{{ analysis.grand_balance|money }}</th>
             </tr>
           </tfoot>
         </table>
@@ -627,29 +686,29 @@
 </div>
 
 <!-- Register Debtor Account Modal -->
-<div id="debtor-account-modal" class="modal-overlay hidden">
-  <div class="modal-dialog" style="max-width: 460px;">
-    <div class="modal-header">
-      <h3 class="modal-title">Check / Register Debtor Account</h3>
-      <button type="button" class="modal-close-btn" data-modal-close="debtor-account-modal">&times;</button>
+<div id="debtor-account-modal" class="modal-overlay hidden fixed inset-0 z-[2000] flex items-center justify-center p-2 sm:p-4 bg-slate-900/55 dark:bg-[#05090f]/80 backdrop-blur-sm">
+  <div class="w-full max-w-[460px] max-h-[calc(100dvh-1rem)] sm:max-h-[90vh] overflow-y-auto rounded-[14px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] shadow-2xl">
+    <div class="flex items-center justify-between px-5 sm:px-6 pt-5 pb-3.5 border-b border-slate-200 dark:border-white/10">
+      <h3 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Check / Register Debtor Account</h3>
+      <button type="button" class="bg-transparent border-0 text-slate-500 hover:text-slate-900 dark:hover:text-slate-50 text-2xl leading-none cursor-pointer px-1.5 py-0.5 rounded-md" data-modal-close="debtor-account-modal">&times;</button>
     </div>
-    <form method="post" action="{% url 'debts_account_register' %}">
+    <form method="post" action="{% url 'debts_account_register' %}" class="m-0 p-5 sm:p-6 flex flex-col gap-4">
       {% csrf_token %}
       <input type="hidden" name="next" value="{% url 'debts' %}">
-      <p class="muted" style="margin: 0; font-size: 0.85rem;">
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">
         Checks whether an account with category <strong>Debtors</strong> already exists for this name; otherwise registers a new one.
       </p>
-      <div class="form-group">
-        <label class="form-label" for="modal-debtor-name">Debtor Account Name *</label>
-        <input type="text" name="name" id="modal-debtor-name" class="form-input" placeholder="e.g. KCB Loan, Fuliza, Jane Doe" required>
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="modal-debtor-name">Debtor Account Name *</label>
+        <input type="text" name="name" id="modal-debtor-name" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="e.g. KCB Loan, Fuliza, Jane Doe" required>
       </div>
-      <div class="form-group">
-        <label class="form-label" for="modal-debtor-number">Account / Phone Number (optional)</label>
-        <input type="text" name="account_number" id="modal-debtor-number" class="form-input" placeholder="Optional">
+      <div class="flex flex-col gap-1.5">
+        <label class="text-sm font-medium text-slate-600 dark:text-slate-400" for="modal-debtor-number">Account / Phone Number (optional)</label>
+        <input type="text" name="account_number" id="modal-debtor-number" class="w-full rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:border-orange-500" placeholder="Optional">
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn-secondary-pill" data-modal-close="debtor-account-modal">Cancel</button>
-        <button type="submit" class="btn-orange-pill">Check &amp; Register</button>
+      <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-200 dark:border-white/10">
+        <button type="button" class="rounded-full border border-slate-300 dark:border-[#26354a] bg-transparent px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-100 dark:hover:bg-[#1c2736]" data-modal-close="debtor-account-modal">Cancel</button>
+        <button type="submit" class="rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2 text-sm font-semibold text-white cursor-pointer transition-colors">Check &amp; Register</button>
       </div>
     </form>
   </div>
@@ -670,6 +729,7 @@
         if (checkTimer) clearTimeout(checkTimer);
         if (!val) {
           statusEl.textContent = '';
+          statusEl.className = 'text-xs text-slate-400 dark:text-slate-500';
           return;
         }
         checkTimer = setTimeout(function () {
@@ -678,11 +738,11 @@
             .then(function (data) {
               if (data.exists && data.account) {
                 statusEl.textContent = 'Existing Debtors account found: "' + data.account.name + '" — will link to it.';
-                statusEl.style.color = 'var(--text-green)';
+                statusEl.className = 'text-xs font-medium text-emerald-600 dark:text-emerald-400';
                 if (selectEl) selectEl.value = String(data.account.id);
               } else {
                 statusEl.textContent = 'Not found — will register new Debtors account "' + val + '".';
-                statusEl.style.color = 'var(--accent-orange)';
+                statusEl.className = 'text-xs font-medium text-orange-600 dark:text-[#ff6b00]';
               }
             })
             .catch(function () {
@@ -721,7 +781,10 @@
     document.getElementById('credit-submit-btn').textContent = 'Register Credit';
     document.getElementById('credit-cancel-edit-btn').classList.add('hidden');
     var statusEl = document.getElementById('debtor-check-status');
-    if (statusEl) statusEl.textContent = '';
+    if (statusEl) {
+      statusEl.textContent = '';
+      statusEl.className = 'text-xs text-slate-400 dark:text-slate-500';
+    }
   };
 
   (function () {

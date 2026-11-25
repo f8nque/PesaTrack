@@ -4,31 +4,38 @@
 {% block title %}Transactions — Pesa Track{% endblock %}
 
 {% block content %}
-<div class="transactions-view">
-  <header class="page-header between-header">
+<div class="space-y-6">
+  <header class="flex flex-wrap items-center justify-between gap-4">
     <div>
-      <h1 class="page-title">Transactions</h1>
-      <p class="page-subtitle">Record daily expenses, incomes, tariff fees, and account transfers.</p>
+      <h1 class="m-0 mb-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-50">Transactions</h1>
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">Record daily expenses, incomes, tariff fees, and account transfers.</p>
     </div>
-    <form method="get" action="{% url 'transactions' %}" class="row" style="margin: 0;">
-      <input type="month" name="month" value="{{ month }}" onchange="this.form.submit()" aria-label="Filter month" />
+    <form method="get" action="{% url 'transactions' %}" class="m-0 flex items-center">
+      <input
+        type="month"
+        name="month"
+        value="{{ month }}"
+        onchange="this.form.submit()"
+        aria-label="Filter month"
+        class="rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
+      />
     </form>
   </header>
 
   {% if not active_accounts %}
-    <p class="empty-state">
-      Add an account first (<a href="{% url 'accounts' %}" style="color: var(--accent-orange);">Accounts tab</a>), then record transactions here.
-    </p>
+    <div class="rounded-[14px] border border-dashed border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] p-10 text-center text-sm text-slate-600 dark:text-slate-400">
+      Add an account first (<a href="{% url 'accounts' %}" class="font-semibold text-orange-600 dark:text-[#ff6b00] hover:underline">Accounts tab</a>), then record transactions here.
+    </div>
   {% else %}
-    <form method="post" action="{% url 'transactions_add' %}" class="row" style="align-items: flex-start;" id="tx-add-form">
+    <form method="post" action="{% url 'transactions_add' %}" class="m-0 flex flex-col md:flex-row md:flex-wrap items-stretch md:items-center gap-2.5" id="tx-add-form">
       {% csrf_token %}
-      <select name="kind" id="tx-kind">
+      <select name="kind" id="tx-kind" class="flex-1 min-w-[140px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
         <option value="expense">Expense</option>
         <option value="income">Income</option>
         <option value="transfer">Transfer</option>
       </select>
 
-      <select name="account" id="tx-account" required>
+      <select name="account" id="tx-account" required class="flex-1 min-w-[170px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
         <option value="" disabled>Select account</option>
         {% for a in active_accounts %}
           <option value="{{ a.id }}" {% if default_account and a.id == default_account.id %}selected{% endif %}>
@@ -37,21 +44,21 @@
         {% endfor %}
       </select>
 
-      <select name="to_account" id="tx-to-account" class="hidden">
+      <select name="to_account" id="tx-to-account" class="hidden flex-1 min-w-[170px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
         <option value="" disabled selected>To account</option>
         {% for a in active_accounts %}
           <option value="{{ a.id }}">{{ a.name }} ({{ a.balance|money }})</option>
         {% endfor %}
       </select>
 
-      <select name="category" id="tx-category">
+      <select name="category" id="tx-category" class="flex-1 min-w-[170px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500">
         <option value="">No category</option>
         {% for c in spent_categories %}
           <option value="{{ c.id }}">{{ c.full_path }}</option>
         {% endfor %}
       </select>
 
-      <input name="amount" id="tx-amount" type="number" step="0.01" min="0.01" placeholder="Amount" required />
+      <input name="amount" id="tx-amount" type="number" step="0.01" min="0.01" placeholder="Amount" required class="flex-1 min-w-[130px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" />
 
       <input
         name="fee"
@@ -61,79 +68,86 @@
         min="0"
         placeholder="Tariff / Fee (optional)"
         title="Bank or M-Pesa transaction fee"
+        class="flex-1 min-w-[140px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500"
       />
 
-      <select name="fee_budget_category" id="tx-fee-budget-category" class="hidden" title="Optional Budget Category for this fee/charge">
+      <select name="fee_budget_category" id="tx-fee-budget-category" class="hidden flex-1 min-w-[170px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" title="Optional Budget Category for this fee/charge">
         <option value="">Fee Budget Category (optional)</option>
         {% for bc in budget_categories %}
           <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
         {% endfor %}
       </select>
 
-      <input name="description" placeholder="Description / Narrative" />
-      <input name="transaction_date" type="date" value="{{ today_iso }}" />
-      <button type="submit" id="tx-submit-btn" class="primary">Add expense</button>
+      <input name="description" placeholder="Description / Narrative" class="flex-1 min-w-[170px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" />
+      <input name="transaction_date" type="date" value="{{ today_iso }}" class="flex-1 min-w-[145px] rounded-[10px] border border-slate-300 dark:border-[#26354a] bg-white dark:bg-[#0f1622] px-3.5 py-2.5 text-sm text-slate-900 dark:text-slate-50 outline-none focus:border-orange-500" />
+      <button
+        type="submit"
+        id="tx-submit-btn"
+        class="inline-flex items-center justify-center rounded-full border-0 bg-[#ea580c] hover:bg-[#c2410c] dark:bg-[#ff6b00] dark:hover:bg-[#fa5a15] px-5 py-2.5 text-sm font-semibold text-white cursor-pointer transition-colors"
+      >Add expense</button>
     </form>
 
-    <div id="tx-low-bal-banner" class="low-balance-alert-banner hidden" style="margin-bottom: 1rem;"></div>
-    <div id="tx-fee-preview" class="transfer-preview-box hidden" style="margin-bottom: 1rem;"></div>
+    <div id="tx-low-bal-banner" class="hidden rounded-[10px] border border-red-500/35 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-600 dark:text-red-400"></div>
+    <div id="tx-fee-preview" class="hidden rounded-[10px] border border-slate-200 dark:border-[#233144] bg-slate-50 dark:bg-[#1c2736] px-4 py-3 text-sm text-slate-600 dark:text-slate-300"></div>
   {% endif %}
 
-  <h2 style="margin-top: 2rem;">Transactions ({{ month }})</h2>
-  {% if not items %}
-    <p class="muted">No transactions for {{ month }}.</p>
-  {% else %}
-    <ul>
-      {% for t in items %}
-        <li class="{% if not t.is_active %}is-inactive{% endif %}">
-          <div>
-            <strong>
-              {% if t.description %}
-                {{ t.description }}
-              {% elif t.spent_category %}
-                {{ t.spent_category.name }}
-              {% else %}
-                {{ t.kind }}
-              {% endif %}
-            </strong>
-            <small class="muted">
-              {{ t.transaction_date|date:"Y-m-d" }},
-              {% if t.kind == 'transfer' %}
-                {{ t.account.name|default:"—" }} &rarr; {{ t.to_account.name|default:"—" }}
-              {% elif t.kind == 'adjustment' %}
-                Reconciliation for {{ t.account.name|default:"—" }}
-              {% else %}
-                {{ t.account.name|default:"—" }}
-              {% endif %}
-              {% if t.fee and t.fee > 0 %} &bull; Tariff: {{ t.fee|money }}{% endif %}
-              {% if not t.is_active %} &bull; Deactivated{% endif %}
-            </small>
-          </div>
+  <section class="space-y-3">
+    <h2 class="m-0 text-lg font-bold text-slate-900 dark:text-slate-50">Transactions ({{ month }})</h2>
+    {% if not items %}
+      <p class="m-0 text-sm text-slate-600 dark:text-slate-400">No transactions for {{ month }}.</p>
+    {% else %}
+      <ul class="m-0 p-0 list-none space-y-2">
+        {% for t in items %}
+          <li class="flex flex-wrap items-center justify-between gap-4 rounded-[10px] border border-slate-200 dark:border-[#233144] bg-white dark:bg-[#16202c] px-4 py-3.5 shadow-sm {% if not t.is_active %}opacity-50{% endif %}">
+            <div>
+              <strong class="block text-sm font-semibold text-slate-900 dark:text-slate-50">
+                {% if t.description %}
+                  {{ t.description }}
+                {% elif t.spent_category %}
+                  {{ t.spent_category.name }}
+                {% else %}
+                  {{ t.kind }}
+                {% endif %}
+              </strong>
+              <small class="text-xs text-slate-500 dark:text-slate-400">
+                {{ t.transaction_date|date:"Y-m-d" }},
+                {% if t.kind == 'transfer' %}
+                  {{ t.account.name|default:"—" }} &rarr; {{ t.to_account.name|default:"—" }}
+                {% elif t.kind == 'adjustment' %}
+                  Reconciliation for {{ t.account.name|default:"—" }}
+                {% else %}
+                  {{ t.account.name|default:"—" }}
+                {% endif %}
+                {% if t.fee and t.fee > 0 %} &bull; Tariff: {{ t.fee|money }}{% endif %}
+                {% if not t.is_active %} &bull; Deactivated{% endif %}
+              </small>
+            </div>
 
-          <div class="between" style="gap: 1rem;">
-            {% if t.kind == 'income' or t.kind == 'adjustment' and t.adjustment_type == 'credit' %}
-              <span class="tag-green">+{{ t.amount|money }}</span>
-            {% elif t.kind == 'expense' or t.kind == 'adjustment' and t.adjustment_type == 'debit' %}
-              <span class="neg">-{{ t.amount|money }}</span>
-            {% else %}
-              <span>{{ t.amount|money }}</span>
-            {% endif %}
+            <div class="flex items-center gap-4">
+              {% if t.kind == 'income' or t.kind == 'adjustment' and t.adjustment_type == 'credit' %}
+                <span class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">+{{ t.amount|money }}</span>
+              {% elif t.kind == 'expense' or t.kind == 'adjustment' and t.adjustment_type == 'debit' %}
+                <span class="text-sm font-semibold text-red-600 dark:text-red-400">-{{ t.amount|money }}</span>
+              {% else %}
+                <span class="text-sm font-semibold text-slate-900 dark:text-slate-50">{{ t.amount|money }}</span>
+              {% endif %}
 
-            <form
-              method="post"
-              action="{% url 'transactions_delete' t.id %}"
-              style="margin: 0;"
-              onsubmit="return confirm('Delete this transaction?');"
-            >
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'transactions' %}?month={{ month }}">
-              <button type="submit" class="link" style="color: var(--text-danger);">Delete</button>
-            </form>
-          </div>
-        </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
+              <form
+                method="post"
+                action="{% url 'transactions_delete' t.id %}"
+                class="m-0"
+                onsubmit="return confirm('Delete this transaction?');"
+              >
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'transactions' %}?month={{ month }}">
+                <button type="submit" class="bg-transparent border-0 text-sm text-red-600 dark:text-red-400 underline cursor-pointer px-1 py-0.5 hover:opacity-80">Delete</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}
 
@@ -220,7 +234,7 @@
     }
 
     if (fee > 0) {
-      feePreview.innerHTML = '<span>Total deducted from <strong>' + (acct ? acct.name : 'Account') + '</strong>: <strong class="neg">' + window.formatMoney(total) + '</strong> (Amount: ' + window.formatMoney(amt) + ' + Fee: ' + window.formatMoney(fee) + ')</span>';
+      feePreview.innerHTML = '<span>Total deducted from <strong class="text-slate-900 dark:text-slate-50">' + (acct ? acct.name : 'Account') + '</strong>: <strong class="text-red-600 dark:text-red-400">' + window.formatMoney(total) + '</strong> (Amount: ' + window.formatMoney(amt) + ' + Fee: ' + window.formatMoney(fee) + ')</span>';
       feePreview.classList.remove('hidden');
     } else {
       feePreview.classList.add('hidden');
