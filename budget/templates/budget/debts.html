@@ -158,6 +158,17 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label" for="credit-budget-category">Budget Category (Optional — for Budget Plan)</label>
+          <select name="budget_category" id="credit-budget-category" class="form-select">
+            <option value="">-- Not linked to a Budget Category --</option>
+            {% for bc in budget_categories %}
+              <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Link repayments for this credit to a Budget Category so you can allocate &amp; track them in your Budget Plan.</span>
+        </div>
+
+        <div class="form-group">
           <label class="form-label" for="credit-comment">Comment</label>
           <textarea name="comment" id="credit-comment" class="form-textarea" rows="2" placeholder="Loan purpose, terms, or notes..."></textarea>
         </div>
@@ -188,6 +199,9 @@
                   <strong style="font-size: 1.05rem;">{{ d.name }}</strong>
                   {% if d.account %}
                     <span class="badge badge-type-budget">🧾 {{ d.account.name }}</span>
+                  {% endif %}
+                  {% if d.budget_category %}
+                    <span class="badge badge-savings">📊 Budget: {{ d.budget_category.name }}</span>
                   {% endif %}
                   {% if d.balance <= 0 %}
                     <span class="badge badge-active">Settled</span>
@@ -263,6 +277,7 @@
                   data-principal="{{ d.principal }}"
                   data-min-payment="{{ d.min_payment }}"
                   data-interest-rate="{{ d.interest_rate }}"
+                  data-budget-category="{{ d.budget_category_id|default:'' }}"
                   data-comment="{{ d.comment|escapejs }}"
                   onclick="editCredit(this)"
                 >Edit</button>
@@ -301,6 +316,7 @@
                   <option
                     value="{{ d.id }}"
                     data-remaining="{{ d.remaining_str }}"
+                    data-budget-category="{{ d.budget_category_id|default:'' }}"
                     {% if preselect_debt_id == d.id %}selected{% endif %}
                   >
                     {% if d.account %}{{ d.account.name }} — {% endif %}{{ d.name }} (Left: {{ d.balance|money }})
@@ -327,10 +343,20 @@
             </div>
           </div>
 
-          <div class="debt-grid-2">
+          <div class="debt-grid-3">
             <div class="form-group">
               <label class="form-label" for="pay-date">Payment Date *</label>
               <input type="date" name="transaction_date" id="pay-date" class="form-input" value="{{ today_iso }}" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="pay-budget-category">Budget Category (Optional)</label>
+              <select name="budget_category" id="pay-budget-category" class="form-select">
+                <option value="">-- Not linked to Budget Plan --</option>
+                {% for bc in budget_categories %}
+                  <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
+                {% endfor %}
+              </select>
             </div>
 
             <div class="form-group">
@@ -397,6 +423,7 @@
               <th>Debtor</th>
               <th>Credit</th>
               <th>Paid From</th>
+              <th>Budget Category</th>
               <th class="num">Amount</th>
               <th>Comment</th>
               <th>Status</th>
@@ -418,6 +445,15 @@
                 </td>
                 <td>{% if tx.debt %}{{ tx.debt.name }}{% else %}—{% endif %}</td>
                 <td>{% if tx.account %}{{ tx.account.name }}{% else %}—{% endif %}</td>
+                <td>
+                  {% if tx.budget_category %}
+                    <span class="badge badge-savings">{{ tx.budget_category.name }}</span>
+                  {% elif tx.debt and tx.debt.budget_category %}
+                    <span class="badge badge-savings">{{ tx.debt.budget_category.name }}</span>
+                  {% else %}
+                    <span class="muted">—</span>
+                  {% endif %}
+                </td>
                 <td class="num"><strong>{{ tx.amount|money }}</strong></td>
                 <td>{{ tx.description|default:"—" }}</td>
                 <td>
@@ -667,6 +703,8 @@
     document.getElementById('credit-principal').value = btn.dataset.principal || '';
     document.getElementById('credit-min-payment').value = btn.dataset.minPayment || '';
     document.getElementById('credit-interest-rate').value = btn.dataset.interestRate || '';
+    var creditBcat = document.getElementById('credit-budget-category');
+    if (creditBcat) creditBcat.value = btn.dataset.budgetCategory || '';
     document.getElementById('credit-comment').value = btn.dataset.comment || '';
     document.getElementById('credit-form-title').textContent = 'Edit Credit #' + btn.dataset.id;
     document.getElementById('credit-submit-btn').textContent = 'Update Credit';
@@ -689,8 +727,16 @@
   (function () {
     var payDebtSelect = document.getElementById('pay-debt');
     var payAccountSelect = document.getElementById('pay-account');
+    var payBudgetCatSelect = document.getElementById('pay-budget-category');
     var payAmountInput = document.getElementById('pay-amount');
     var payAmountHint = document.getElementById('pay-amount-hint');
+
+    function syncPayBudgetCategory() {
+      if (!payDebtSelect || !payBudgetCatSelect) return;
+      var opt = payDebtSelect.options[payDebtSelect.selectedIndex];
+      var bcatId = opt && opt.dataset ? (opt.dataset.budgetCategory || '') : '';
+      payBudgetCatSelect.value = bcatId;
+    }
 
     function getSelectedNumericAttr(selectEl, attr) {
       if (!selectEl) return null;
@@ -744,10 +790,14 @@
     }
 
     if (payDebtSelect && payAmountInput) {
-      payDebtSelect.addEventListener('change', syncRemainingLimit);
+      payDebtSelect.addEventListener('change', function () {
+        syncRemainingLimit();
+        syncPayBudgetCategory();
+      });
       if (payAccountSelect) payAccountSelect.addEventListener('change', syncRemainingLimit);
       payAmountInput.addEventListener('input', validatePayAmount);
       syncRemainingLimit();
+      syncPayBudgetCategory();
     }
 
     document.querySelectorAll('.debt-repay-inline-form').forEach(function (form) {

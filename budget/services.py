@@ -1,10 +1,12 @@
 import calendar
 from decimal import Decimal
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Sum
 from django.utils import timezone
+from .excel import parse_xlsx
 from .models import (
-    Account, Budget, Debt, Transaction, total
+    Account, Budget, BudgetCategory, BudgetGroupCategory, Debt,
+    SpentCategory, Transaction, total
 )
 
 
@@ -32,6 +34,30 @@ def resolve_default_account(user):
     return acct
 
 
+def compute_budget_category_actual(period_tx_qs, budget_category):
+    """Sum active expenses, linked debit adjustments, and linked fees for a BudgetCategory."""
+    if not budget_category:
+        return Decimal('0')
+    spent_ids = budget_category.spent_categories.values_list('id', flat=True)
+    amount_total = period_tx_qs.filter(
+        (
+            models.Q(kind='expense')
+            & (
+                models.Q(spent_category_id__in=spent_ids)
+                | models.Q(budget_category_id=budget_category.id)
+                | models.Q(budget_category__isnull=True, debt__budget_category_id=budget_category.id)
+            )
+        )
+        | models.Q(kind='adjustment', adjustment_type='debit', budget_category_id=budget_category.id)
+    ).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+    fee_total = period_tx_qs.filter(
+        kind__in=('expense', 'transfer'),
+        fee__gt=0,
+        fee_budget_category_id=budget_category.id,
+    ).aggregate(t=Sum('fee'))['t'] or Decimal('0')
+    return amount_total + fee_total
+
+
 def compute_summary(user, month_str=None):
     """Compute monthly financial state: income -> budget -> actual -> remaining."""
     today = timezone.localdate()
@@ -42,7 +68,12 @@ def compute_summary(user, month_str=None):
     inm = tx_qs.filter(transaction_date__year=y, transaction_date__month=m)
     exp = inm.filter(kind='expense')
     income = f(inm.filter(kind='income'))
-    spent = f(exp.filter(debt__isnull=True))
+    linked_adj_debit = f(inm.filter(kind='adjustment', adjustment_type='debit', budget_category__isnull=False))
+    linked_fees = float(
+        inm.filter(kind__in=('expense', 'transfer'), fee__gt=0, fee_budget_category__isnull=False)
+        .aggregate(t=Sum('fee'))['t'] or 0
+    )
+    spent = f(exp.filter(debt__isnull=True)) + linked_adj_debit + linked_fees
     debt_paid = f(exp.filter(debt__isnull=False))
 
     active_budget = Budget.objects.filter(
@@ -59,8 +90,7 @@ def compute_summary(user, month_str=None):
             'budget_category__grouping__priority', 'budget_category__name'
         )
         for item in items:
-            spent_ids = item.budget_category.spent_categories.values_list('id', flat=True)
-            actual = f(exp.filter(spent_category_id__in=spent_ids))
+            actual = float(compute_budget_category_actual(inm, item.budget_category))
             planned = float(item.amount)
             budget_items.append({
                 'id': item.id,
@@ -108,8 +138,8 @@ def compute_summary(user, month_str=None):
     }
 
 
-def reconcile_account_balance(user, account, actual_balance, reconcile_date=None, notes=''):
-    """Create a silent adjustment transaction to reconcile account balance to actual_balance."""
+def reconcile_account_balance(user, account, actual_balance, reconcile_date=None, notes='', budget_category=None):
+    """Create a reconciliation adjustment transaction (silent unless linked to a budget_category)."""
     actual = Decimal(str(actual_balance))
     current = account.balance
     diff = actual - current
@@ -121,12 +151,14 @@ def reconcile_account_balance(user, account, actual_balance, reconcile_date=None
     adj_type = 'credit' if diff > 0 else 'debit'
     amt = abs(diff)
     desc = notes or f"Balance Adjustment ({'+' if diff > 0 else '-'}{amt} reconciled to {actual})"
+    linked_bcat = budget_category if adj_type == 'debit' else None
 
     tx = Transaction.objects.create(
         user=user,
         account=account,
         kind='adjustment',
         adjustment_type=adj_type,
+        budget_category=linked_bcat,
         amount=amt,
         transaction_date=reconcile_date,
         description=desc,
@@ -401,3 +433,365 @@ def compute_debt_analysis(user, year=None):
         'grand_net_change': float(grand_year_taken - grand_year_paid),
         'grand_balance': float(grand_balance),
     }
+
+
+CATEGORY_TEMPLATE_HEADERS = [
+    'Budget Grouping',
+    'Grouping Priority (1-10)',
+    'Budget Category',
+    'Category Type (needs/wants/savings)',
+    'Budget Active (YES/NO)',
+    'Spent Category',
+    'As Savings (YES/NO)',
+    'Spent Active (YES/NO)',
+]
+
+_HEADER_ALIASES = {
+    'budget grouping': 'grouping',
+    'grouping': 'grouping',
+    'grouping name': 'grouping',
+    'budget grouping category': 'grouping',
+    'grouping priority (1-10)': 'priority',
+    'grouping priority': 'priority',
+    'priority': 'priority',
+    'priority (1-10)': 'priority',
+    'budget category': 'budget_category',
+    'category type (needs/wants/savings)': 'category_type',
+    'category type': 'category_type',
+    'type': 'category_type',
+    'budget active (yes/no)': 'budget_active',
+    'budget active': 'budget_active',
+    'spent category': 'spent_category',
+    'as savings (yes/no)': 'is_savings',
+    'as savings': 'is_savings',
+    'spent active (yes/no)': 'spent_active',
+    'spent active': 'spent_active',
+}
+
+_TRUE_VALS = {'yes', 'y', 'true', '1', 'active'}
+_FALSE_VALS = {'no', 'n', 'false', '0', 'inactive'}
+
+
+def _parse_bool_cell(raw, default, field_label, row_num, errors):
+    val = str(raw or '').strip().lower()
+    if not val:
+        return default, False
+    if val in _TRUE_VALS:
+        return True, True
+    if val in _FALSE_VALS:
+        return False, True
+    errors.append(f'Row {row_num}: "{raw}" is not a valid {field_label} value (use YES or NO).')
+    return default, False
+
+
+def build_categories_template_sheets(user):
+    """Build workbook sheets [(sheet_name, rows), ...] for the category Excel template."""
+    data_rows = [list(CATEGORY_TEMPLATE_HEADERS)]
+
+    groups = (
+        BudgetGroupCategory.objects.filter(user=user)
+        .prefetch_related('budget_categories__spent_categories')
+        .order_by('priority', 'name')
+    )
+    for grp in groups:
+        bcats = list(grp.budget_categories.all().order_by('name'))
+        if not bcats:
+            data_rows.append([grp.name, grp.priority, '', '', '', '', '', ''])
+            continue
+        for bcat in bcats:
+            bcat_active = 'YES' if bcat.is_active else 'NO'
+            scats = list(bcat.spent_categories.all().order_by('name'))
+            if not scats:
+                data_rows.append([
+                    grp.name, grp.priority, bcat.name, bcat.category_type, bcat_active, '', '', ''
+                ])
+                continue
+            for scat in scats:
+                data_rows.append([
+                    grp.name,
+                    grp.priority,
+                    bcat.name,
+                    bcat.category_type,
+                    bcat_active,
+                    scat.name,
+                    'YES' if scat.is_savings else 'NO',
+                    'YES' if scat.is_active else 'NO',
+                ])
+
+    unassigned = SpentCategory.objects.filter(user=user, budget_category__isnull=True).order_by('name')
+    for scat in unassigned:
+        data_rows.append([
+            '', '', '', '', '',
+            scat.name,
+            'YES' if scat.is_savings else 'NO',
+            'YES' if scat.is_active else 'NO',
+        ])
+
+    guide_rows = [
+        ['Column', 'Required', 'Allowed Values / Format', 'Example'],
+        ['Budget Grouping', 'Yes (for Budget Categories)', 'Text up to 80 chars (Level 1 grouping)', 'UPKEEP'],
+        ['Grouping Priority (1-10)', 'No (defaults to 1)', 'Integer from 1 (highest) to 10 (lowest)', 1],
+        ['Budget Category', 'No (optional if only adding groupings)', 'Text up to 80 chars (Level 2 category)', 'Shopping'],
+        ['Category Type (needs/wants/savings)', 'No (defaults to wants)', 'needs, wants, or savings', 'needs'],
+        ['Budget Active (YES/NO)', 'No (defaults to YES)', 'YES or NO', 'YES'],
+        ['Spent Category', 'No (optional)', 'Text up to 80 chars (Level 3 spent item)', 'Supermarket'],
+        ['As Savings (YES/NO)', 'No (defaults to NO)', 'YES or NO', 'NO'],
+        ['Spent Active (YES/NO)', 'No (defaults to YES)', 'YES or NO', 'YES'],
+        [],
+        ['Sample Rows (copy format into the Categories sheet):'],
+        list(CATEGORY_TEMPLATE_HEADERS),
+        ['UPKEEP', 1, 'Shopping', 'needs', 'YES', 'Supermarket', 'NO', 'YES'],
+        ['UPKEEP', 1, 'Shopping', 'needs', 'YES', 'Meat', 'NO', 'YES'],
+        ['HOUSING', 2, 'Rent & Utilities', 'needs', 'YES', 'Electricity', 'NO', 'YES'],
+        ['SAVINGS', 3, 'Emergency Fund', 'savings', 'YES', 'MMF Deposit', 'YES', 'YES'],
+    ]
+
+    return [
+        ('Categories', data_rows),
+        ('Guide', guide_rows),
+    ]
+
+
+def import_categories_from_xlsx(user, file_obj):
+    """Parse and atomically import 3-tier categories from an uploaded .xlsx file."""
+    sheets = parse_xlsx(file_obj)
+    target_rows = None
+    for name, rows in sheets:
+        if name.strip().lower() == 'categories':
+            target_rows = rows
+            break
+    if target_rows is None:
+        target_rows = sheets[0][1]
+
+    if not target_rows:
+        return None, ['The uploaded worksheet is empty. Download the template and add your categories.']
+
+    header_row = [str(c).strip() for c in target_rows[0]]
+    col_map = {}
+    for idx, h in enumerate(header_row):
+        canonical = _HEADER_ALIASES.get(h.lower())
+        if canonical and canonical not in col_map:
+            col_map[canonical] = idx
+
+    if not any(k in col_map for k in ('grouping', 'budget_category', 'spent_category')):
+        return None, [
+            'Unrecognized header row. Please use the downloaded Excel template columns '
+            '(Budget Grouping, Grouping Priority (1-10), Budget Category, Category Type, Budget Active, '
+            'Spent Category, As Savings, Spent Active).'
+        ]
+
+    def cell(row, key):
+        idx = col_map.get(key)
+        if idx is None or idx >= len(row):
+            return ''
+        return str(row[idx] or '').strip()
+
+    errors = []
+    parsed_entries = []
+    known_bcat_names = set(
+        b.lower() for b in BudgetCategory.objects.filter(user=user).values_list('name', flat=True)
+    )
+
+    for row_num, row in enumerate(target_rows[1:], start=2):
+        if not any(str(c).strip() for c in row):
+            continue
+
+        grp_name = cell(row, 'grouping')
+        priority_raw = cell(row, 'priority')
+        bcat_name = cell(row, 'budget_category')
+        cat_type_raw = cell(row, 'category_type')
+        bcat_active_raw = cell(row, 'budget_active')
+        scat_name = cell(row, 'spent_category')
+        is_savings_raw = cell(row, 'is_savings')
+        spent_active_raw = cell(row, 'spent_active')
+
+        if not grp_name and not bcat_name and not scat_name:
+            continue
+
+        for label, val in (
+            ('Budget Grouping', grp_name),
+            ('Budget Category', bcat_name),
+            ('Spent Category', scat_name),
+        ):
+            if len(val) > 80:
+                errors.append(f'Row {row_num}: {label} "{val[:20]}..." exceeds 80 characters.')
+
+        priority = 1
+        priority_provided = False
+        if priority_raw:
+            try:
+                p_num = int(float(priority_raw))
+                if not (1 <= p_num <= 10) or float(priority_raw) != p_num:
+                    raise ValueError
+                priority = p_num
+                priority_provided = True
+            except ValueError:
+                errors.append(f'Row {row_num}: Grouping Priority "{priority_raw}" must be an integer between 1 and 10.')
+
+        cat_type = 'wants'
+        cat_type_provided = False
+        if cat_type_raw:
+            normalized_type = cat_type_raw.lower()
+            if normalized_type not in ('needs', 'wants', 'savings'):
+                errors.append(
+                    f'Row {row_num}: Category Type "{cat_type_raw}" must be needs, wants, or savings.'
+                )
+            else:
+                cat_type = normalized_type
+                cat_type_provided = True
+
+        bcat_active, bcat_active_provided = _parse_bool_cell(
+            bcat_active_raw, True, 'Budget Active', row_num, errors
+        )
+        is_savings, is_savings_provided = _parse_bool_cell(
+            is_savings_raw, False, 'As Savings', row_num, errors
+        )
+        spent_active, spent_active_provided = _parse_bool_cell(
+            spent_active_raw, True, 'Spent Active', row_num, errors
+        )
+
+        if bcat_name:
+            if grp_name:
+                known_bcat_names.add(bcat_name.lower())
+            elif bcat_name.lower() not in known_bcat_names:
+                errors.append(
+                    f'Row {row_num}: Budget Grouping is required for new Budget Category "{bcat_name}".'
+                )
+
+        parsed_entries.append({
+            'row_num': row_num,
+            'grp_name': grp_name,
+            'priority': priority,
+            'priority_provided': priority_provided,
+            'bcat_name': bcat_name,
+            'cat_type': cat_type,
+            'cat_type_provided': cat_type_provided,
+            'bcat_active': bcat_active,
+            'bcat_active_provided': bcat_active_provided,
+            'scat_name': scat_name,
+            'is_savings': is_savings,
+            'is_savings_provided': is_savings_provided,
+            'spent_active': spent_active,
+            'spent_active_provided': spent_active_provided,
+        })
+
+    if not parsed_entries and not errors:
+        return None, ['No category rows found in the uploaded file. Fill in at least one row below the header.']
+
+    if errors:
+        return None, errors
+
+    stats = {
+        'rows_processed': len(parsed_entries),
+        'groups_created': 0,
+        'groups_updated': 0,
+        'budget_created': 0,
+        'budget_updated': 0,
+        'spent_created': 0,
+        'spent_updated': 0,
+    }
+
+    with transaction.atomic():
+        groups_by_key = {
+            g.name.lower(): g for g in BudgetGroupCategory.objects.filter(user=user)
+        }
+        bcats_by_key = {
+            (b.grouping_id, b.name.lower()): b for b in BudgetCategory.objects.filter(user=user)
+        }
+        bcats_by_name = {}
+        for b in bcats_by_key.values():
+            bcats_by_name.setdefault(b.name.lower(), b)
+        scats_by_key = {
+            s.name.lower(): s for s in SpentCategory.objects.filter(user=user)
+        }
+
+        updated_group_ids = set()
+        updated_bcat_ids = set()
+        updated_scat_ids = set()
+
+        for entry in parsed_entries:
+            grp = None
+            if entry['grp_name']:
+                g_key = entry['grp_name'].lower()
+                grp = groups_by_key.get(g_key)
+                if grp is None:
+                    grp = BudgetGroupCategory.objects.create(
+                        user=user,
+                        name=entry['grp_name'],
+                        priority=entry['priority'],
+                    )
+                    groups_by_key[g_key] = grp
+                    stats['groups_created'] += 1
+                elif entry['priority_provided'] and grp.priority != entry['priority']:
+                    grp.priority = entry['priority']
+                    grp.save(update_fields=['priority', 'updated_at'])
+                    if grp.id not in updated_group_ids:
+                        updated_group_ids.add(grp.id)
+                        stats['groups_updated'] += 1
+
+            bcat = None
+            if entry['bcat_name']:
+                b_name_key = entry['bcat_name'].lower()
+                if grp is not None:
+                    bcat = bcats_by_key.get((grp.id, b_name_key))
+                else:
+                    bcat = bcats_by_name.get(b_name_key)
+
+                if bcat is None:
+                    bcat = BudgetCategory.objects.create(
+                        user=user,
+                        grouping=grp,
+                        name=entry['bcat_name'],
+                        category_type=entry['cat_type'],
+                        is_active=entry['bcat_active'],
+                    )
+                    bcats_by_key[(grp.id, b_name_key)] = bcat
+                    bcats_by_name.setdefault(b_name_key, bcat)
+                    stats['budget_created'] += 1
+                else:
+                    changed_fields = []
+                    if entry['cat_type_provided'] and bcat.category_type != entry['cat_type']:
+                        bcat.category_type = entry['cat_type']
+                        changed_fields.append('category_type')
+                    if entry['bcat_active_provided'] and bcat.is_active != entry['bcat_active']:
+                        bcat.is_active = entry['bcat_active']
+                        changed_fields.append('is_active')
+                    if changed_fields:
+                        changed_fields.append('updated_at')
+                        bcat.save(update_fields=changed_fields)
+                        if bcat.id not in updated_bcat_ids:
+                            updated_bcat_ids.add(bcat.id)
+                            stats['budget_updated'] += 1
+
+            if entry['scat_name']:
+                s_key = entry['scat_name'].lower()
+                scat = scats_by_key.get(s_key)
+                if scat is None:
+                    scat = SpentCategory.objects.create(
+                        user=user,
+                        budget_category=bcat,
+                        name=entry['scat_name'],
+                        is_savings=entry['is_savings'],
+                        is_active=entry['spent_active'],
+                    )
+                    scats_by_key[s_key] = scat
+                    stats['spent_created'] += 1
+                else:
+                    changed_fields = []
+                    if bcat is not None and scat.budget_category_id != bcat.id:
+                        scat.budget_category = bcat
+                        changed_fields.append('budget_category')
+                    if entry['is_savings_provided'] and scat.is_savings != entry['is_savings']:
+                        scat.is_savings = entry['is_savings']
+                        changed_fields.append('is_savings')
+                    if entry['spent_active_provided'] and scat.is_active != entry['spent_active']:
+                        scat.is_active = entry['spent_active']
+                        changed_fields.append('is_active')
+                    if changed_fields:
+                        changed_fields.append('updated_at')
+                        scat.save(update_fields=changed_fields)
+                        if scat.id not in updated_scat_ids:
+                            updated_scat_ids.add(scat.id)
+                            stats['spent_updated'] += 1
+
+    return stats, []

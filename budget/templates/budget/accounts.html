@@ -415,6 +415,17 @@
           </div>
         </div>
 
+        <div id="xfer-fee-bcat-group" class="form-group hidden">
+          <label class="form-label" for="xfer-fee-budget-category">Fee / Charge Budget Category (Optional)</label>
+          <select id="xfer-fee-budget-category" name="fee_budget_category" class="form-select">
+            <option value="">-- Do not track fee in Budget Plan --</option>
+            {% for bc in budget_categories %}
+              <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Track this transfer charge under a Budget Category in your Budget Plan.</span>
+        </div>
+
         <div class="form-group">
           <label class="form-label" for="xfer-date">Date</label>
           <input id="xfer-date" name="transaction_date" type="date" class="form-input" value="{{ today_iso }}" />
@@ -475,6 +486,17 @@
         <div class="form-group">
           <label class="form-label" for="rec-notes">Reconciliation Note (Optional)</label>
           <input id="rec-notes" name="notes" class="form-input" placeholder="e.g. Reconciled with KCB mobile banking SMS" />
+        </div>
+
+        <div id="rec-bcat-group" class="form-group hidden">
+          <label class="form-label" for="rec-budget-category">Budget Category for Deficit (Optional)</label>
+          <select id="rec-budget-category" name="budget_category" class="form-select">
+            <option value="">-- Silent adjustment (Not linked to Budget Plan) --</option>
+            {% for bc in budget_categories %}
+              <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Link this deficit adjustment to a Budget Category to capture it in your Budget Plan.</span>
         </div>
 
         <div class="modal-footer">
@@ -665,6 +687,8 @@
   var xferTo = document.getElementById('xfer-to');
   var xferAmt = document.getElementById('xfer-amount');
   var xferFee = document.getElementById('xfer-fee');
+  var xferFeeBcatGroup = document.getElementById('xfer-fee-bcat-group');
+  var xferFeeBcatSelect = document.getElementById('xfer-fee-budget-category');
   var xferAmtHint = document.getElementById('xfer-amount-hint');
   var xferSubmitBtn = document.getElementById('xfer-submit-btn');
   var xferPreview = document.getElementById('xfer-preview');
@@ -704,6 +728,11 @@
       xferAmt.setCustomValidity('');
     }
 
+    if (xferFeeBcatGroup) {
+      xferFeeBcatGroup.classList.toggle('hidden', !(fee > 0));
+      if (!(fee > 0) && xferFeeBcatSelect) xferFeeBcatSelect.value = '';
+    }
+
     if (fromAcct && toAcct && amt > 0) {
       var totalDeducted = amt + fee;
       var rem = fromAcct.balance - totalDeducted;
@@ -729,6 +758,7 @@
   window.openTransferModal = function (fromId, toId) {
     xferAmt.value = '';
     xferFee.value = '';
+    if (xferFeeBcatSelect) xferFeeBcatSelect.value = '';
     document.getElementById('xfer-date').value = todayIso;
     document.getElementById('xfer-narrative').value = '';
     if (xferSubmitBtn) xferSubmitBtn.disabled = !hasFundedXferAccounts;
@@ -761,6 +791,8 @@
   var recActual = document.getElementById('rec-actual');
   var recDiffVal = document.getElementById('rec-diff-val');
   var recDiffHint = document.getElementById('rec-diff-hint');
+  var recBcatGroup = document.getElementById('rec-bcat-group');
+  var recBcatSelect = document.getElementById('rec-budget-category');
 
   function updateReconcilePreview() {
     var actual = Number(recActual.value || 0);
@@ -768,8 +800,13 @@
     recDiffVal.textContent = (diff > 0 ? '+' : '') + window.formatMoney(diff);
     recDiffVal.className = diff < 0 ? 'neg' : (diff > 0 ? 'tag-green' : '');
 
+    if (recBcatGroup) {
+      recBcatGroup.classList.toggle('hidden', !(diff < 0));
+      if (!(diff < 0) && recBcatSelect) recBcatSelect.value = '';
+    }
+
     if (diff < 0) {
-      recDiffHint.innerHTML = '<span>📉 Deficit: A silent debit of ' + window.formatMoney(Math.abs(diff)) + ' will be recorded to match your actual balance.</span>';
+      recDiffHint.innerHTML = '<span>📉 Deficit: A debit adjustment of ' + window.formatMoney(Math.abs(diff)) + ' will be recorded to match your actual balance.</span>';
     } else if (diff > 0) {
       recDiffHint.innerHTML = '<span>📈 Surplus: A silent credit of ' + window.formatMoney(diff) + ' will be recorded to match your actual balance.</span>';
     } else {
@@ -789,6 +826,7 @@
     recActual.value = reconcileCurrentBalance.toFixed(2);
     document.getElementById('rec-date').value = todayIso;
     document.getElementById('rec-notes').value = '';
+    if (recBcatSelect) recBcatSelect.value = '';
     updateReconcilePreview();
     window.openModal('reconcile-modal');
   };

@@ -10,21 +10,23 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.db.models import Sum
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from .excel import build_xlsx
 from .models import (
     Account, Budget, BudgetCategory, BudgetGroupCategory, BudgetItem,
     Debt, SpentCategory, Transaction, total
 )
 from .services import (
-    compute_account_insights, compute_debt_analysis, compute_summary,
-    parse_month, reconcile_account_balance, resolve_default_account,
-    resolve_or_register_debtor_account,
+    build_categories_template_sheets, compute_account_insights,
+    compute_budget_category_actual, compute_debt_analysis, compute_summary,
+    import_categories_from_xlsx, parse_month, reconcile_account_balance,
+    resolve_default_account, resolve_or_register_debtor_account,
 )
 from .templatetags.budget_extras import ACCOUNT_KINDS_META
 
@@ -35,6 +37,7 @@ NAV_TABS = [
     {'id': 'accounts', 'url_name': 'accounts', 'label': 'Accounts'},
     {'id': 'budget', 'url_name': 'budget', 'label': 'Budget Plan'},
     {'id': 'debts', 'url_name': 'debts', 'label': 'Debts'},
+    {'id': 'setup', 'url_name': 'setup', 'label': 'Setup'},
 ]
 
 
@@ -533,6 +536,11 @@ def transactions_view(request):
         .select_related('budget_category__grouping')
         .order_by('name')
     )
+    budget_categories = list(
+        BudgetCategory.objects.filter(user=request.user, is_active=True)
+        .select_related('grouping')
+        .order_by('grouping__priority', 'name')
+    )
 
     accounts_meta = {
         a.id: {
@@ -551,6 +559,7 @@ def transactions_view(request):
         'active_accounts': active_accounts,
         'default_account': default_account,
         'spent_categories': spent_cats,
+        'budget_categories': budget_categories,
         'accounts_json': json.dumps(accounts_meta),
     }
     return render(request, 'budget/transactions.html', ctx)
@@ -606,11 +615,19 @@ def transactions_add(request):
 
     if kind == 'income':
         fee = Decimal('0')
+        fee_budget_category = None
     elif kind in ('expense', 'transfer'):
         bal_err = _validate_account_balance(account, amount + fee)
         if bal_err:
             messages.error(request, bal_err)
             return redirect('transactions')
+        fee_bcat_id = (request.POST.get('fee_budget_category') or '').strip()
+        fee_budget_category = (
+            get_object_or_404(BudgetCategory, pk=int(fee_bcat_id), user=request.user)
+            if fee > 0 and fee_bcat_id.isdigit() else None
+        )
+    else:
+        fee_budget_category = None
 
     Transaction.objects.create(
         user=request.user,
@@ -618,6 +635,7 @@ def transactions_add(request):
         account=account,
         to_account=to_account,
         spent_category=spent_category,
+        fee_budget_category=fee_budget_category,
         amount=amount,
         fee=fee,
         transaction_date=tx_date,
@@ -748,6 +766,11 @@ def accounts_view(request):
         {'id': k, 'name': v['name'], 'icon': v['icon']}
         for k, v in ACCOUNT_KINDS_META.items()
     ]
+    budget_categories = list(
+        BudgetCategory.objects.filter(user=request.user, is_active=True)
+        .select_related('grouping')
+        .order_by('grouping__priority', 'name')
+    )
 
     ctx = {
         **_base_context('accounts'),
@@ -764,6 +787,7 @@ def accounts_view(request):
         'total_pots': total_pots,
         'low_balance_count': low_balance_count,
         'account_kinds': account_kinds,
+        'budget_categories': budget_categories,
         'accounts_json': json.dumps(accounts_meta),
         'insights_account': insights_account,
         'insights_data': insights_data,
@@ -873,11 +897,18 @@ def accounts_transfer(request):
         messages.error(request, bal_err)
         return redirect('accounts')
 
+    fee_bcat_id = (request.POST.get('fee_budget_category') or '').strip()
+    fee_budget_category = (
+        get_object_or_404(BudgetCategory, pk=int(fee_bcat_id), user=request.user)
+        if fee > 0 and fee_bcat_id.isdigit() else None
+    )
+
     Transaction.objects.create(
         user=request.user,
         kind='transfer',
         account=from_acct,
         to_account=to_acct,
+        fee_budget_category=fee_budget_category,
         amount=amount,
         fee=fee,
         transaction_date=tx_date,
@@ -895,10 +926,16 @@ def accounts_reconcile(request, pk):
     actual_raw = request.POST.get('actual_balance')
     reconcile_date = _parse_date(request.POST.get('date'))
     notes = (request.POST.get('notes') or '').strip()
+    bcat_id = (request.POST.get('budget_category') or '').strip()
+    budget_category = (
+        get_object_or_404(BudgetCategory, pk=int(bcat_id), user=request.user)
+        if bcat_id.isdigit() else None
+    )
 
     try:
         tx, diff, _ = reconcile_account_balance(
-            request.user, acct, actual_raw, reconcile_date=reconcile_date, notes=notes
+            request.user, acct, actual_raw, reconcile_date=reconcile_date,
+            notes=notes, budget_category=budget_category,
         )
     except Exception:
         messages.error(request, 'Invalid actual balance amount.')
@@ -906,6 +943,11 @@ def accounts_reconcile(request, pk):
 
     if tx is None:
         messages.info(request, f'"{acct.name}" balance already matches actual balance. No adjustment needed.')
+    elif tx.budget_category:
+        messages.success(
+            request,
+            f'"{acct.name}" reconciled (adjustment of {diff:+,.2f} linked to "{tx.budget_category.name}").'
+        )
     else:
         messages.success(request, f'"{acct.name}" reconciled (silent adjustment of {diff:+,.2f} recorded).')
     return redirect('accounts')
@@ -987,14 +1029,22 @@ def budget_view(request):
     actual_spent_period = Decimal('0')
 
     if current_budget:
-        period_expenses = Transaction.objects.filter(
+        period_txs = Transaction.objects.filter(
             user=request.user,
             is_active=True,
-            kind='expense',
             transaction_date__gte=current_budget.start_date,
             transaction_date__lte=current_budget.end_date,
         )
-        actual_spent_period = period_expenses.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        exp_amt = period_txs.filter(kind='expense').aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        adj_amt = (
+            period_txs.filter(kind='adjustment', adjustment_type='debit', budget_category__isnull=False)
+            .aggregate(t=Sum('amount'))['t'] or Decimal('0')
+        )
+        fee_amt = (
+            period_txs.filter(kind__in=('expense', 'transfer'), fee__gt=0, fee_budget_category__isnull=False)
+            .aggregate(t=Sum('fee'))['t'] or Decimal('0')
+        )
+        actual_spent_period = exp_amt + adj_amt + fee_amt
 
         groups_map = {
             g.id: {
@@ -1013,8 +1063,7 @@ def budget_view(request):
         )
         for item in items:
             if item.budget_category:
-                spent_ids = item.budget_category.spent_categories.values_list('id', flat=True)
-                actual = period_expenses.filter(spent_category_id__in=spent_ids).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+                actual = compute_budget_category_actual(period_txs, item.budget_category)
                 grp_id = item.budget_category.grouping_id
             else:
                 actual = Decimal('0')
@@ -1174,7 +1223,7 @@ def _render_debts(request, default_tab='credits'):
 
     debts = list(
         Debt.objects.filter(user=request.user)
-        .select_related('account')
+        .select_related('account', 'budget_category__grouping')
         .order_by('-registration_date', '-id')
     )
     total_borrowed = Decimal('0')
@@ -1225,9 +1274,15 @@ def _render_debts(request, default_tab='credits'):
     filter_debtor_id = int(filter_debtor_raw) if filter_debtor_raw.isdigit() else None
     filter_year = int(filter_year_raw) if filter_year_raw.isdigit() else None
 
+    budget_categories = list(
+        BudgetCategory.objects.filter(user=request.user, is_active=True)
+        .select_related('grouping')
+        .order_by('grouping__priority', 'name')
+    )
+
     repayments_qs = (
         Transaction.objects.filter(user=request.user, debt__isnull=False)
-        .select_related('debt__account', 'account')
+        .select_related('debt__account', 'debt__budget_category', 'account', 'budget_category')
         .order_by('-transaction_date', '-id')
     )
     if not show_voided:
@@ -1255,6 +1310,7 @@ def _render_debts(request, default_tab='credits'):
         'debts': debts,
         'unpaid_debts': unpaid_debts,
         'debtor_accounts': debtor_accounts,
+        'budget_categories': budget_categories,
         'active_accounts': active_accounts,
         'payable_accounts': funded_accounts,
         'default_account': default_account,
@@ -1341,6 +1397,11 @@ def debts_add(request):
     service_raw = (request.POST.get('service_date') or '').strip()
     service_date = _parse_date(service_raw) if service_raw else None
     comment = (request.POST.get('comment') or '').strip()
+    bcat_id = (request.POST.get('budget_category') or '').strip()
+    budget_category = (
+        get_object_or_404(BudgetCategory, pk=int(bcat_id), user=request.user)
+        if bcat_id.isdigit() else None
+    )
 
     debtor_account, acct_created = resolve_or_register_debtor_account(
         request.user,
@@ -1370,6 +1431,7 @@ def debts_add(request):
         debt = get_object_or_404(Debt, pk=debt_id, user=request.user)
         debt.name = name
         debt.account = debtor_account
+        debt.budget_category = budget_category
         debt.principal = principal
         debt.registration_date = reg_date
         debt.service_date = service_date
@@ -1382,6 +1444,7 @@ def debts_add(request):
         Debt.objects.create(
             user=request.user,
             account=debtor_account,
+            budget_category=budget_category,
             name=name,
             principal=principal,
             registration_date=reg_date,
@@ -1433,6 +1496,11 @@ def _record_debt_repayment(request, debt_id):
     tx_date = _parse_date(request.POST.get('transaction_date'))
     comment = (request.POST.get('comment') or request.POST.get('description') or '').strip()
     description = comment or f'Repayment: {debt.name}'
+    bcat_id = (request.POST.get('budget_category') or '').strip()
+    if bcat_id.isdigit():
+        budget_category = get_object_or_404(BudgetCategory, pk=int(bcat_id), user=request.user)
+    else:
+        budget_category = debt.budget_category
 
     try:
         amount = _parse_decimal(request.POST.get('amount'), 'repayment amount')
@@ -1454,6 +1522,7 @@ def _record_debt_repayment(request, debt_id):
         user=request.user,
         kind='expense',
         account=account,
+        budget_category=budget_category,
         debt=debt,
         amount=amount,
         transaction_date=tx_date,
@@ -1488,3 +1557,73 @@ def debts_delete(request, pk):
     debt.delete()
     messages.success(request, f'Debt "{name}" deleted.')
     return redirect('debts')
+
+
+# ---------------------------------------------------------------------------
+# Setup (Bulk Excel Import)
+# ---------------------------------------------------------------------------
+
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024  # 5 MB
+
+
+@login_required
+def setup_view(request):
+    ctx = {
+        **_base_context('setup'),
+        'groups_count': BudgetGroupCategory.objects.filter(user=request.user).count(),
+        'budget_cats_count': BudgetCategory.objects.filter(user=request.user).count(),
+        'spent_cats_count': SpentCategory.objects.filter(user=request.user).count(),
+        'upload_result': request.session.pop('setup_upload_result', None),
+        'upload_errors': request.session.pop('setup_upload_errors', None),
+    }
+    return render(request, 'budget/setup.html', ctx)
+
+
+@login_required
+def setup_categories_template(request):
+    sheets = build_categories_template_sheets(request.user)
+    xlsx_bytes = build_xlsx(sheets)
+    response = HttpResponse(
+        xlsx_bytes,
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="categories_template.xlsx"'
+    return response
+
+
+@login_required
+@require_POST
+def setup_categories_upload(request):
+    uploaded = request.FILES.get('excel_file')
+    if not uploaded:
+        messages.error(request, 'Please select an Excel (.xlsx) file to upload.')
+        return redirect('setup')
+
+    if not uploaded.name.lower().endswith('.xlsx'):
+        messages.error(request, 'Only .xlsx Excel files are supported. Please download and fill the .xlsx template.')
+        return redirect('setup')
+
+    if uploaded.size > MAX_UPLOAD_BYTES:
+        messages.error(request, 'Uploaded file is too large (max 5 MB).')
+        return redirect('setup')
+
+    try:
+        stats, errors = import_categories_from_xlsx(request.user, uploaded)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect('setup')
+
+    if errors:
+        request.session['setup_upload_errors'] = errors
+        messages.error(request, f'Upload failed with {len(errors)} validation issue(s). No categories were modified.')
+        return redirect('setup')
+
+    request.session['setup_upload_result'] = stats
+    messages.success(
+        request,
+        f"Imported {stats['rows_processed']} row(s): "
+        f"{stats['groups_created']} grouping(s) created, "
+        f"{stats['budget_created']} budget category(ies) created, "
+        f"{stats['spent_created']} spent category(ies) created."
+    )
+    return redirect('setup')

@@ -169,6 +169,10 @@ class Debt(models.Model):
         Account, null=True, blank=True, related_name='debts',
         on_delete=models.SET_NULL, help_text="Linked debtor account (category: debtors)"
     )
+    budget_category = models.ForeignKey(
+        BudgetCategory, null=True, blank=True, related_name='debts',
+        on_delete=models.SET_NULL, help_text="Optional budget category for tracking repayments in Budget Plan"
+    )
     name = models.CharField(max_length=100)
     principal = models.DecimalField(max_digits=14, decimal_places=2)
     registration_date = models.DateField(default=timezone.localdate)
@@ -257,6 +261,14 @@ class Transaction(models.Model):
     account = models.ForeignKey(Account, null=True, blank=True, related_name='transactions', on_delete=models.CASCADE)
     to_account = models.ForeignKey(Account, null=True, blank=True, related_name='incoming', on_delete=models.CASCADE)
     spent_category = models.ForeignKey(SpentCategory, null=True, blank=True, related_name='transactions', on_delete=models.SET_NULL)
+    budget_category = models.ForeignKey(
+        BudgetCategory, null=True, blank=True, related_name='transactions',
+        on_delete=models.SET_NULL, help_text="Optional direct budget category (e.g. for debt repayments or debit adjustments)"
+    )
+    fee_budget_category = models.ForeignKey(
+        BudgetCategory, null=True, blank=True, related_name='fee_transactions',
+        on_delete=models.SET_NULL, help_text="Optional budget category for tracking transaction fees/tariffs"
+    )
     debt = models.ForeignKey(Debt, null=True, blank=True, related_name='repayments', on_delete=models.SET_NULL)
     amount = models.DecimalField(max_digits=14, decimal_places=2)
     transaction_date = models.DateField(default=timezone.localdate)

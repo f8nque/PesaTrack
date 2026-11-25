@@ -52,4 +52,9 @@ urlpatterns = [
     path('debts/repay/', views.debts_repay_form, name='debts_repay_form'),
     path('debts/<int:pk>/repay/', views.debts_repay, name='debts_repay'),
     path('debts/<int:pk>/delete/', views.debts_delete, name='debts_delete'),
+
+    # Setup
+    path('setup/', views.setup_view, name='setup'),
+    path('setup/categories/template/', views.setup_categories_template, name='setup_categories_template'),
+    path('setup/categories/upload/', views.setup_categories_upload, name='setup_categories_upload'),
 ]

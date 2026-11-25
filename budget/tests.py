@@ -1,15 +1,18 @@
+import io
 from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.utils import timezone
+from .excel import build_xlsx, parse_xlsx
 from .models import (
     Account, BudgetGroupCategory, BudgetCategory, SpentCategory,
     Debt, Transaction, Budget, BudgetItem
 )
 from .services import (
-    compute_account_insights, compute_debt_analysis, compute_summary,
-    reconcile_account_balance, resolve_default_account
+    CATEGORY_TEMPLATE_HEADERS, compute_account_insights, compute_debt_analysis,
+    compute_summary, reconcile_account_balance, resolve_default_account
 )
 
 
@@ -1079,3 +1082,257 @@ class DebtSectionTests(TestCase):
         self.assertContains(res_reactivate, 'exceeds available balance')
         xfer_tx.refresh_from_db()
         self.assertFalse(xfer_tx.is_active)
+
+    def test_debt_repayment_linked_to_budget_category(self):
+        group = BudgetGroupCategory.objects.create(user=self.user, name='OBLIGATIONS', priority=1)
+        bcat = BudgetCategory.objects.create(
+            user=self.user, grouping=group, name='Debt Repayments', category_type='needs'
+        )
+        month_first = self.today.replace(day=1)
+        month_last = self.today.replace(day=28)
+        budget = Budget.objects.create(
+            user=self.user,
+            name='Monthly Debt Budget',
+            start_date=month_first,
+            end_date=month_last,
+            allocated_amount=Decimal('20000.00'),
+        )
+        BudgetItem.objects.create(budget=budget, budget_category=bcat, amount=Decimal('10000.00'))
+
+        bank = Account.objects.create(
+            user=self.user, name='Salary Bank', kind='bank', opening_balance=Decimal('25000.00')
+        )
+
+        # Register two debts linked to the same Debt Repayments BudgetCategory
+        self.client.post('/debts/add/', {
+            'debtor_account_name': 'KCB Loan',
+            'name': 'KCB Personal Loan',
+            'principal': '12000.00',
+            'registration_date': str(self.today),
+            'budget_category': bcat.id,
+        })
+        self.client.post('/debts/add/', {
+            'debtor_account_name': 'M-Shwari Loan',
+            'name': 'M-Shwari',
+            'principal': '5000.00',
+            'registration_date': str(self.today),
+        })
+        kcb_debt = Debt.objects.get(user=self.user, name='KCB Personal Loan')
+        mshwari_debt = Debt.objects.get(user=self.user, name='M-Shwari')
+        self.assertEqual(kcb_debt.budget_category_id, bcat.id)
+        self.assertIsNone(mshwari_debt.budget_category_id)
+
+        # Repay both debts on the SAME date:
+        # 1) KCB inherits debt.budget_category automatically
+        self.client.post(f'/debts/{kcb_debt.id}/repay/', {
+            'account': bank.id,
+            'amount': '4000.00',
+            'transaction_date': str(self.today),
+        })
+        # 2) M-Shwari links to bcat explicitly via the Payments form (same date, no unique constraint conflict)
+        self.client.post('/debts/repay/', {
+            'debt': mshwari_debt.id,
+            'account': bank.id,
+            'budget_category': bcat.id,
+            'amount': '2500.00',
+            'transaction_date': str(self.today),
+        })
+
+        # Both repayments (4000 + 2500 = 6500) appear in Budget Plan and Dashboard Budget remaining
+        res_budget = self.client.get(f'/budget/?budget={budget.id}')
+        self.assertEqual(res_budget.status_code, 200)
+        grouped = res_budget.context['grouped_items']
+        self.assertEqual(len(grouped), 1)
+        self.assertEqual(grouped[0]['items'][0]['actual_spent'], Decimal('6500.00'))
+        self.assertEqual(grouped[0]['items'][0]['pct'], 65)
+
+        summary = compute_summary(self.user, self.today.strftime('%Y-%m'))
+        self.assertEqual(summary['debt_paid'], 6500.0)
+        self.assertEqual(summary['spent'], 0.0)
+        self.assertEqual(summary['budget'][0]['actual'], 6500.0)
+        self.assertEqual(summary['budget'][0]['remaining'], 3500.0)
+
+    def test_adjustments_and_fees_linked_to_budget_category(self):
+        group = BudgetGroupCategory.objects.create(user=self.user, name='CHARGES', priority=2)
+        charges_bcat = BudgetCategory.objects.create(
+            user=self.user, grouping=group, name='Bank & M-Pesa Charges', category_type='needs'
+        )
+        month_first = self.today.replace(day=1)
+        month_last = self.today.replace(day=28)
+        budget = Budget.objects.create(
+            user=self.user,
+            name='Charges Budget',
+            start_date=month_first,
+            end_date=month_last,
+            allocated_amount=Decimal('5000.00'),
+        )
+        BudgetItem.objects.create(budget=budget, budget_category=charges_bcat, amount=Decimal('1000.00'))
+
+        bank = Account.objects.create(
+            user=self.user, name='KCB', kind='bank', opening_balance=Decimal('10000.00')
+        )
+        mpesa = Account.objects.create(
+            user=self.user, name='M-Pesa', kind='mpesa', opening_balance=Decimal('1000.00')
+        )
+
+        # 1. Reconcile deficit (10000 -> 9850 = -150) linked to charges_bcat
+        res_rec = self.client.post(f'/accounts/{bank.id}/reconcile/', {
+            'actual_balance': '9850.00',
+            'date': str(self.today),
+            'notes': 'Untracked bank ledger fee',
+            'budget_category': charges_bcat.id,
+        }, follow=True)
+        self.assertContains(res_rec, 'linked to')
+        self.assertEqual(bank.balance, Decimal('9850.00'))
+
+        # 2. Surplus reconciliation (1000 -> 1200 = +200) stays silent even if budget_category is sent
+        self.client.post(f'/accounts/{mpesa.id}/reconcile/', {
+            'actual_balance': '1200.00',
+            'date': str(self.today),
+            'budget_category': charges_bcat.id,
+        })
+        self.assertEqual(mpesa.balance, Decimal('1200.00'))
+
+        # 3. Transfer 500 with 25 tariff linked to charges_bcat
+        self.client.post('/accounts/transfer/', {
+            'from_account': bank.id,
+            'to_account': mpesa.id,
+            'amount': '500.00',
+            'fee': '25.00',
+            'fee_budget_category': charges_bcat.id,
+            'transaction_date': str(self.today),
+        })
+        self.assertEqual(bank.balance, Decimal('9325.00'))
+        self.assertEqual(mpesa.balance, Decimal('1700.00'))
+
+        # 4. Expense via /transactions/add/ with a 15 fee linked to charges_bcat
+        self.client.post('/transactions/add/', {
+            'kind': 'expense',
+            'account': mpesa.id,
+            'amount': '200.00',
+            'fee': '15.00',
+            'fee_budget_category': charges_bcat.id,
+            'transaction_date': str(self.today),
+            'description': 'Paybill item',
+        })
+
+        # Budget Plan & Dashboard capture: 150 (debit adj) + 25 (xfer fee) + 15 (exp fee) = 190
+        # (and NOT the 500 transfer amount, NOT the 200 expense amount, NOT the +200 credit adjustment)
+        res_budget = self.client.get(f'/budget/?budget={budget.id}')
+        grouped = res_budget.context['grouped_items']
+        self.assertEqual(grouped[0]['items'][0]['actual_spent'], Decimal('190.00'))
+        # actual_spent_period = 200 (expense) + 150 (linked debit adj) + 25 + 15 (linked fees) = 390
+        self.assertEqual(res_budget.context['actual_spent_period'], Decimal('390.00'))
+
+        summary = compute_summary(self.user, self.today.strftime('%Y-%m'))
+        self.assertEqual(summary['spent'], 390.0)
+        self.assertEqual(summary['budget'][0]['actual'], 190.0)
+        self.assertEqual(summary['budget'][0]['remaining'], 810.0)
+
+
+class SetupCategoryExcelTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='setupuser', password='password123')
+        self.client.force_login(self.user)
+
+    def test_setup_page_and_nav_link(self):
+        res = self.client.get('/setup/')
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'Upload Categories')
+        self.assertContains(res, '/setup/categories/template/')
+        self.assertContains(res, '/setup/categories/upload/')
+        self.assertContains(res, 'href="/setup/"')
+
+    def test_download_template_and_round_trip_upload(self):
+        # Seed one existing hierarchy to verify template exports existing rows too
+        grp = BudgetGroupCategory.objects.create(user=self.user, name='UPKEEP', priority=1)
+        bcat = BudgetCategory.objects.create(
+            user=self.user, grouping=grp, name='Shopping', category_type='needs', is_active=True
+        )
+        SpentCategory.objects.create(
+            user=self.user, budget_category=bcat, name='Supermarket', is_savings=False, is_active=True
+        )
+
+        res = self.client.get('/setup/categories/template/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(
+            res['Content-Type'],
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        self.assertIn('categories_template.xlsx', res['Content-Disposition'])
+
+        sheets = dict(parse_xlsx(io.BytesIO(res.content)))
+        self.assertIn('Categories', sheets)
+        self.assertIn('Guide', sheets)
+        self.assertEqual(sheets['Categories'][0], CATEGORY_TEMPLATE_HEADERS)
+        self.assertEqual(
+            sheets['Categories'][1],
+            ['UPKEEP', '1', 'Shopping', 'needs', 'YES', 'Supermarket', 'NO', 'YES'],
+        )
+
+        # Fill new categories alongside existing row and upload
+        upload_rows = [
+            CATEGORY_TEMPLATE_HEADERS,
+            ['UPKEEP', 1, 'Shopping', 'needs', 'YES', 'Supermarket', 'NO', 'YES'],
+            ['UPKEEP', 1, 'Shopping', 'needs', 'YES', 'Meat', 'NO', 'YES'],
+            ['HOUSING', 2, 'Utilities', 'needs', 'YES', 'Electricity', 'NO', 'YES'],
+            ['SAVINGS', 3, 'Emergency Fund', 'savings', 'YES', 'MMF Deposit', 'YES', 'NO'],
+            ['', '', '', '', '', 'Misc Unassigned', 'NO', 'YES'],
+        ]
+        xlsx_bytes = build_xlsx([('Categories', upload_rows)])
+        upload_file = SimpleUploadedFile(
+            'categories_filled.xlsx',
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        res_upload = self.client.post('/setup/categories/upload/', {'excel_file': upload_file}, follow=True)
+        self.assertEqual(res_upload.status_code, 200)
+        self.assertContains(res_upload, 'Category upload complete')
+
+        self.assertEqual(BudgetGroupCategory.objects.filter(user=self.user).count(), 3)
+        self.assertEqual(BudgetCategory.objects.filter(user=self.user).count(), 3)
+        self.assertEqual(SpentCategory.objects.filter(user=self.user).count(), 5)
+
+        mmf = SpentCategory.objects.get(user=self.user, name='MMF Deposit')
+        self.assertTrue(mmf.is_savings)
+        self.assertFalse(mmf.is_active)
+        self.assertEqual(mmf.budget_category.name, 'Emergency Fund')
+        self.assertEqual(mmf.budget_category.category_type, 'savings')
+        self.assertEqual(mmf.budget_category.grouping.priority, 3)
+
+        misc = SpentCategory.objects.get(user=self.user, name='Misc Unassigned')
+        self.assertIsNone(misc.budget_category)
+
+    def test_upload_validation_is_atomic_and_rejects_bad_rows(self):
+        bad_rows = [
+            CATEGORY_TEMPLATE_HEADERS,
+            ['VALID_GROUP', 1, 'Valid Bcat', 'needs', 'YES', 'Valid Spent', 'NO', 'YES'],
+            ['BAD_GROUP', 99, 'Bad Bcat', 'invalid_type', 'YES', 'Bad Spent', 'MAYBE', 'YES'],
+        ]
+        xlsx_bytes = build_xlsx([('Categories', bad_rows)])
+        upload_file = SimpleUploadedFile(
+            'bad_categories.xlsx',
+            xlsx_bytes,
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        res = self.client.post('/setup/categories/upload/', {'excel_file': upload_file}, follow=True)
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, 'Please fix the following issues')
+        self.assertContains(res, 'Row 3:')
+        # Nothing should have been committed due to atomic validation
+        self.assertEqual(BudgetGroupCategory.objects.filter(user=self.user).count(), 0)
+        self.assertEqual(BudgetCategory.objects.filter(user=self.user).count(), 0)
+        self.assertEqual(SpentCategory.objects.filter(user=self.user).count(), 0)
+
+    def test_upload_rejects_non_xlsx_and_corrupt_files(self):
+        csv_file = SimpleUploadedFile('categories.csv', b'a,b,c\n1,2,3\n', content_type='text/csv')
+        res_csv = self.client.post('/setup/categories/upload/', {'excel_file': csv_file}, follow=True)
+        self.assertContains(res_csv, 'Only .xlsx Excel files are supported')
+
+        corrupt_xlsx = SimpleUploadedFile(
+            'corrupt.xlsx',
+            b'not-a-zip-file',
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        res_corrupt = self.client.post('/setup/categories/upload/', {'excel_file': corrupt_xlsx}, follow=True)
+        self.assertContains(res_corrupt, 'Invalid Excel (.xlsx) file')

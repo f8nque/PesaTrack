@@ -63,6 +63,13 @@
         title="Bank or M-Pesa transaction fee"
       />
 
+      <select name="fee_budget_category" id="tx-fee-budget-category" class="hidden" title="Optional Budget Category for this fee/charge">
+        <option value="">Fee Budget Category (optional)</option>
+        {% for bc in budget_categories %}
+          <option value="{{ bc.id }}">{{ bc.name }} ({{ bc.grouping.name }})</option>
+        {% endfor %}
+      </select>
+
       <input name="description" placeholder="Description / Narrative" />
       <input name="transaction_date" type="date" value="{{ today_iso }}" />
       <button type="submit" id="tx-submit-btn" class="primary">Add expense</button>
@@ -141,6 +148,7 @@
   var catEl = document.getElementById('tx-category');
   var amtEl = document.getElementById('tx-amount');
   var feeEl = document.getElementById('tx-fee');
+  var feeBcatEl = document.getElementById('tx-fee-budget-category');
   var submitBtn = document.getElementById('tx-submit-btn');
   var lowBanner = document.getElementById('tx-low-bal-banner');
   var feePreview = document.getElementById('tx-fee-preview');
@@ -172,6 +180,12 @@
     var amt = Number(amtEl.value || 0);
     var fee = Number(feeEl.value || 0);
     var total = amt + fee;
+
+    if (feeBcatEl) {
+      var showFeeBcat = (k !== 'income' && fee > 0);
+      feeBcatEl.classList.toggle('hidden', !showFeeBcat);
+      if (!showFeeBcat) feeBcatEl.value = '';
+    }
 
     if (k === 'transfer') {
       Array.prototype.forEach.call(toAcctEl.options, function (opt) {
