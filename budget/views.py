@@ -166,7 +166,7 @@ def today_view(request):
         Transaction.objects.filter(
             user=request.user,
             transaction_date=today,
-            kind__in=('expense', 'transfer'),
+            kind__in=('expense', 'transfer','adjustment'),
         )
         .select_related(
             'account',
@@ -195,8 +195,9 @@ def today_view(request):
     all_spend_entries = []
     for tx in all_today_txs:
         acct_name = tx.account.name if tx.account else ''
-        if tx.kind == 'expense':
+        if tx.kind == 'expense' or tx.kind == 'adjustment':
             cat_name = tx.spent_category.name if tx.spent_category else 'Uncategorised'
+            adjustment_cat_name = tx.budget_category if tx.kind == 'adjustment' else cat_name
             cat_path = (
                 tx.spent_category.full_path
                 if (tx.spent_category and tx.spent_category.full_path != cat_name)
@@ -210,6 +211,7 @@ def today_view(request):
                 'raw_description': tx.description,
                 'account_id': tx.account_id,
                 'account_name': acct_name,
+                'adjustment_account_name': adjustment_cat_name,
                 'subtitle_extra': '',
                 'spent_category_id': tx.spent_category_id,
                 'category_name': cat_name,
@@ -218,6 +220,7 @@ def today_view(request):
                 'amount': tx.amount,
                 'is_active': tx.is_active,
             })
+
         if tx.fee and tx.fee > 0:
             if tx.fee_budget_category:
                 fee_cat_name = tx.fee_budget_category.name

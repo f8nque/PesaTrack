@@ -126,7 +126,11 @@
 
           <div class="min-w-0">
             <div class="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+              {% if tx.parent_kind == 'adjustment' %}
+              {{tx.adjustment_account_name}}
+              {% else %}
               {{ tx.category_name }}
+              {% endif %}
             </div>
             {% if tx.category_path %}
               <div class="mt-0.5 text-xs text-slate-400 dark:text-slate-500 truncate">{{ tx.category_path }}</div>
@@ -148,9 +152,16 @@
           </div>
 
           <div class="sm:col-span-2 lg:col-span-1 lg:w-60 flex items-center justify-end gap-1.5">
-            {% if tx.is_fee %}
+            {% if tx.is_fee  or tx.parent_kind == 'adjustment'%}
               <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold border bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/35 whitespace-nowrap">
-                {% if tx.parent_kind == 'transfer' %}Transfer Fee{% else %}Tx Fee{% endif %}
+                {% if tx.parent_kind == 'transfer' %}
+                Transfer Fee
+                {% elif tx.parent_kind == 'adjustment' %}
+                Account Adjustment
+                {% else %}
+                Tx Fee
+                {% endif %}
+                
               </span>
               <a
                 href="{% url 'transactions' %}?month={{ today|date:'Y-m' }}"
